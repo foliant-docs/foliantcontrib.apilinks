@@ -1,4 +1,5 @@
-'''apilinks preprocessor for Foliant.'''
+'''apilinks preprocessor for Foliant. Replaces API references with links to API
+docs'''
 import re
 from io import BytesIO
 from collections import OrderedDict
@@ -13,10 +14,13 @@ REQUIRED_REF_REGEX_GROUPS = ['source', 'command']
 
 
 class GenURLError(Exception):
+    '''Exception in the full url generation process'''
     pass
 
 
 class API:
+    '''Helper class representing an API documentation website'''
+
     def __init__(self, name: str, url: str, htempl: str, offline: bool):
         self.name = name
         self.url = url.rstrip('/')
@@ -24,16 +28,44 @@ class API:
         self.headers = self._fill_headers()
         self.header_template = htempl
 
-    def format_header(self, format_dict):
+    def format_header(self, format_dict: dict) -> str:
+        '''
+        Generate a header of correct format used in the API documentation
+        website.
+
+        format_dict (dict) — dictionary with values needed to generate a header
+                             like 'verb' or 'command'
+        '''
         return self.header_template.format(**format_dict)
 
     def format_anchor(self, format_dict):
+        '''
+        Generate an anchor of correct format used to represend headers  in the
+        API documentation website.
+
+        format_dict (dict) — dictionary with values needed to generate an anchor
+                             like 'verb' or 'command'
+        '''
         return convert_to_anchor(self.format_header(format_dict))
 
     def gen_full_url(self, format_dict):
+        '''
+        Generate a full url to a method documentation on the API documentation
+        website.
+
+        format_dict (dict) — dictionary with values needed to generate an URL
+                             like 'verb' or 'command'
+        '''
         return f'{self.url}/#{self.format_anchor(format_dict)}'
 
     def _fill_headers(self) -> dict:
+        '''
+        Parse self.url and generate headers dictionary {'anchor': header_title}.
+        If self.offline == true — returns an empty dictionary.
+
+        May thrown HTTPError if url is incorrect or unavailable.
+        '''
+
         if self.offline:
             return {}
         page = request.urlopen(self.url).read()  # may throw HTTPError
@@ -49,13 +81,14 @@ class API:
         return f'API({self.name})'
 
 
-def convert_to_anchor(reference):
+def convert_to_anchor(reference: str) -> str:
     '''
     Convert reference string into correct anchor
 
     >>> convert_to_anchor('GET /endpoint/method{id}')
     'get-endpoint-method-id'
     '''
+
     result = ''
     accum = False
     header = reference.strip()
@@ -72,6 +105,11 @@ def convert_to_anchor(reference):
 
 
 class Reference:
+    '''
+    Class representing a reference. It is a reference attribute collection
+    with values defaulting to None.
+    '''
+
     def __init__(self, source=None, prefix=None, verb=None, command=None):
         self.source = source
         self.prefix = prefix
@@ -79,6 +117,8 @@ class Reference:
         self.command = command
 
     def init_from_match(self, match):
+        '''init values for all reference attributes from a match object'''
+
         groups = match.groupdict().keys()
         if 'source' in groups:
             self.source = match.group('source')
@@ -115,12 +155,22 @@ class Preprocessor(BasePreprocessor):
         self.set_apis()
 
     def _warning(self, msg: str):
-        '''log warning and print to user'''
+        '''Log warning and print to user'''
 
         output(f'WARNING: {msg}', self.quiet)
         self.logger.warning(msg)
 
     def set_apis(self):
+        '''
+        Fills self.apis dictionary with API objects representing each API from
+        the config. If self.offline == false — they will be filled with headers
+        from the actual wep-page.
+
+        Also sets self.default_api. It is the first API from the config marked
+        with 'default' option or, if there's not mark, ther first API from the
+        config. self.default_api is API class.
+        '''
+
         for api in self.options.get('API', {}):
             try:
                 api_dict = self.options['API'][api]
@@ -143,9 +193,17 @@ class Preprocessor(BasePreprocessor):
 
     def _compile_link_pattern(self, expr: str) -> bool:
         '''
-        Check whether the expression expr is valid and has all required
-        groups. Return compiled pattern.
+        Checks whether the expression expr is valid and has all required
+        groups.
+
+        Shows warning if some vital group is missing. Throws error if there's
+        a mistake in regular expression'
+
+        Returns compiled pattern.
+
+        expr (str) — string with regular expression to compile.
         '''
+
         try:
             pattern = re.compile(expr)
         except re.error:
@@ -157,7 +215,18 @@ class Preprocessor(BasePreprocessor):
                               f'{group}. Preprocessor may not work right')
         return pattern
 
-    def find_url(self, verb: str, command: str):
+    def find_url(self, verb: str, command: str) -> str:
+        '''
+        Goes through every header list of every API and looks for the method
+        represented by verb and command.
+
+        Trows GenURLError if the method is not found or if the  method with
+        such attributes occurs in several APIs.
+
+        verb (str) — verb of the method (GET, POST, etc);
+        command (str) — command of the method.
+        '''
+
         found = []
         for api_name in self.apis:
             api = self.apis[api_name]
@@ -174,6 +243,19 @@ class Preprocessor(BasePreprocessor):
         raise GenURLError(f'Cannot find method {verb} {command}.')
 
     def get_url(self, prefix: str, verb: str, command: str):
+        '''
+        Goes through every header list of the API with name == prefix and looks
+        for the method represented by verb and command.
+
+        Trows GenURLError if the method is not found or if there's no API with
+        such name (the API may be in config but its URL is unavailable).
+
+        prefix (str) — prefix used in the reference. Must equal one of the APIs
+                       names.
+        verb (str) — verb of the method (GET, POST, etc);
+        command (str) — command of the method.
+        '''
+
         if prefix in self.apis:
             api = self.apis[prefix]
             anchor = api.format_anchor(dict(verb=verb, command=command))
@@ -185,6 +267,21 @@ class Preprocessor(BasePreprocessor):
         raise GenURLError(f'Cannot find method {verb} {command} in {prefix}.')
 
     def gen_url_offline(self, ref: Reference) -> str:
+        '''
+        Generates a full URL to the method referenced by ref.
+
+        If ref has prefix — take the url from API which name == prefix.
+        If there's no such API in config — throw GenURLError.
+
+        If ref has no prefix — take url from the default API. If there's no
+        default API — throw GenURLError.
+
+        Does not check whether the method actually exists on the documentation
+        web-page. Should be used when self.offline == True.
+
+        ref (Reference) — Reference object for which the url should be generated;
+        '''
+
         if ref.prefix:
             if ref.prefix not in self.apis:
                 raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
@@ -197,6 +294,16 @@ class Preprocessor(BasePreprocessor):
         return api.gen_full_url(ref.__dict__)
 
     def gen_url(self, ref: Reference) -> str:
+        '''
+        Generates a full URL to the method referenced by ref.
+
+        Checks whether the method actually exists on the documentation
+        web-page. If not — raises GenURLError. Should be used when
+        self.offline == False.
+
+        ref (Reference) — Reference object for which the url should be generated;
+        '''
+
         if ref.prefix:
             return self.get_url(ref.prefix, ref.verb, ref.command)
         else:
@@ -204,6 +311,16 @@ class Preprocessor(BasePreprocessor):
 
     def process_links(self, content: str) -> str:
         def _sub(block) -> str:
+            '''
+            Replaces each occurence of the reference to API method (described
+            by regex in 'ref-regex' option) with link to the API documentation
+            web-page.
+
+            If can't determine link (mistake in the prefix or method name,
+            several methods with this name and no prefix, etc) — shows warning
+            and leaves reference unchanged.
+            '''
+
             ref = Reference()
             ref.init_from_match(block)
             url = None
@@ -217,12 +334,7 @@ class Preprocessor(BasePreprocessor):
                 self._warning(f'{e} Skipping')
                 return ref.source
 
-            if url:
-                return self.options['output-template'].format(url=url,
-                                                              **ref.__dict__)
-            else:
-                self._warning(f'Could not find method {ref.source} skipping')
-                return ref.source
+            return self.options['output-template'].format(url=url, **ref.__dict__)
 
         return self.link_pattern.sub(_sub, content)
 
