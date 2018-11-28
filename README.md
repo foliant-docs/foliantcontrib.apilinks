@@ -25,7 +25,7 @@ If you don't use prefix in the *reference* (and the regular expression which cap
 
 Prefixes, explained before, are supported too.
 
-## Quick start
+## Quick Start
 
 Say, you have an API documentation hosted at the url http://example.com/api-docs
 
@@ -179,15 +179,132 @@ preprocessors:
 `header-template`
 :   *(optional)* A template string describing the format of the headings in the API documentation web-page. Details in **parsing API web-page** section. Default: '{verb} {command}'
 
+## Capturing References
 
-## Usage
+apilinks uses regular expressions to capture *references* to API methods.
 
-Explain how your preprocessor should be used in Foliant projects. Provide Markdown samples. If the preprocessor registers tags, provide examples of their usage.
+The default reg-ex is as following:
 
-!!! important
+```re
+(?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)
+```
 
-    In order to omit processing of the tags in this file, use `<<tag></tag>` syntax:
+This expression accepts these kinds of references:
 
-    ```markdown
-    <<apilinks option="value">body</apilinks>
-    ```
+- `Client-API: GET user/info`
+- `UPDATE user/details`
+
+Notice that default expression uses Named Capturing Groups. You would probably want to use all of them too if you are to redefine the expression. But not all are required. Details in the table below.
+
+Group | Required | Description
+----- | -------- | -----------
+source | YES | The full original reference string
+prefix | NO | Prefix pointing to the name of the API to use from config
+verb | NO | HTTP verb as `GET`, `POST, etc
+command | YES | the full method resource name as it is stated in API header
+
+To redefine the regular expression used to capture references add an option `reg-regex` to the preprocessor options.
+
+For example, if you want to capture ONLY references with prefixes you may use the following:
+
+```yaml
+preprocessors:
+  - apilinks:
+      ref-regex: '(?P<source>`((?P<prefix>[\w-]+):\s*)(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)'
+```
+
+Don't forget the single quotes around a regular expression. This way we say to yaml processor that this is a string.
+
+Now the references without prefix (`UPDATE user/details`) will be ignored.
+
+## Customizing Output
+
+You can customize the *output*-string which will replace the *reference* string. To do that add a template into your config-file.
+
+A *template* is a string which may contain properties, surrounded by curly braces. These properties will be replaced with the values, all the rest remaining unchanged.
+
+For example, if we use the default template:
+
+```yaml
+preprocessors:
+  - apilinks:
+      output-template: '[{verb} {command}]({url})',
+```
+
+Don't forget the single quotes around the template. This way we say to yaml processor that this is a string for it not to be confused with curly braces.
+
+The reference string will be replaced by something like that:
+
+```
+[GET user/info](http://example.com/api/#get-user-info)
+```
+
+Properties you may use in the template:
+
+property | description | example
+-------- | ----------- | -------
+url | Full url to the method description | `http://example.com/api/#get-user-info`
+source | Full original reference string | \``Client-API: GET user/info`\`
+prefix | Prefix used in the reference | `Client-API`
+verb | HTTP verb used in the reference | `GET`
+command | API command being referenced | `user/info`
+
+## Parsing API Web-page
+
+apilinks goes through the API web-page content and gathers all the methods which are described there.
+
+To do this preprocessor scans each HTML `h2` tag and stores its `id` attribute (which is an anchor of the link to be constructed) and the contents of the tag (the heading itself).
+
+For example in this link
+
+```html
+<h2 id="get-user-info">GET user/info</h2>
+```
+
+the anchor would be `get-user-info`; the heading would be `GET user/info`.
+
+To construct the correct link to the method description we will have to create the correct anchor for it. To create an anchor we would need to reconstruct the heading first. But the heading format may be arbitrary and that's why we need the `header-template` config option.
+
+The `header-template` is a string which may contain properties, surrounded by curly braces. These properties will be replaced with the values, when preprocessor will attempt to reconstruct the heading. All the rest symbols will remain unchanged.
+
+Properties you may use in the template:
+
+property | description | example
+-------- | ----------- | -------
+verb | HTTP verb used in the reference | `GET`
+command | API command being referenced | `user/info`
+
+For example, if your API headings look like this:
+
+```
+Method user/info (GET)
+```
+
+You should use the following option:
+
+```yaml
+...
+API:
+    Client-API:
+        header-template: 'Method {command} ({verb})'
+...
+```
+
+Don't forget the single quotes around the template. This way we say to yaml processor that this is a string for it not to be confused with curly braces.
+
+If your headers do not have verb at all:
+
+```
+Method user/info (GET)
+```
+
+You should use the following option:
+
+```yaml
+...
+API:
+    Client-API:
+        header-template: '{command}'
+...
+```
+
