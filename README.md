@@ -358,7 +358,7 @@ Group | Required | Description
 ----- | -------- | -----------
 source | YES | The full original reference string
 prefix | NO | Prefix pointing to the name of the API from config
-verb | NO | HTTP verb as `GET`, `POST, etc
+verb | NO | HTTP verb as `GET`, `POST`, etc
 command | YES | the full method resource as it is stated in the API header
 
 To redefine the regular expression add an option `reg-regex` to the preprocessor config.
