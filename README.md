@@ -142,13 +142,17 @@ The preprocessor has a lot of options. For your convenience the required options
 
 ```yaml
 preprocessors:
-  - apilinks:
-      ref-regex: *ref_pattern
-      output-template: '[{verb} {command}]({url})',
-      targets:
+- apilinks:
+    ref-regex: *ref_pattern
+    output-template: '[{verb} {command}]({url})',
+    targets:
         - site
-      offline: False
-      API:
+    offline: False
+    trim-if-targets:
+        - pdf
+    trim-template:
+        - '`{verb} {command}`'
+    API:
         Client-API:
             url: http://example.com/api/client
             default: true
@@ -174,6 +178,12 @@ Default:
 
 `offline`
 :   *(optional)* Option determining whether the preprocessor will work in *online* or *offline* mode. Details in the **How Does It Work?** and **Online and Offline Modes Comparison** sections. Default: `False`
+
+`trim-if-targets`
+:   *(optional)* List of targets for `foliant make` command for which the prefixes from all *references* in the text will be cut out. Default: `[]`
+
+`trim-template`
+:   *(optional)* Only for targets listed in `trim-if-targets` option. Tune this template if you want to customize how apilinks cuts out prefixes. The reference will be replaced with text based on this template. Default: ```'`{verb} {command}`'```
 
 `API`
 :   *(required)* A subsection for listing all the APIs and their properties. Under this section there should be a separate subsection for each API. The section name represents the API name and, at the same time, the *prefix* used in the references. You need to add at least one API subsection for preprocessor to work.
