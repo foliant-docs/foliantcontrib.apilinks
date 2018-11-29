@@ -11,20 +11,6 @@ Glossary:
 - **header** — HTML header on the API documentation web-page of the method description, e.g. `<h2 id="get-user-config">GET user/config</h2>`
 - **anchor** — web-anchor leading to the specific *header* on the API documentation web-page, e.g. `#get-user-config`
 
-## How Does It Work?
-
-Preprocessor can work in *online* and *offline* modes.
-
-**In offline mode** it merely replaces *references* to API methods with links to their description. The references are catched by a regular expression. The link url is taken from config and the link *anchor* is generated from the reference automatically.
-
-You can have several different APIs stated in the config. You can use prefixes to point out which API is being *reference*d. Prefixes format may be customized  in the configuration but by default you do it like this: `Client-API: GET user/name`. Here '*Client-API*' is a prefix.
-
-If you don't use prefix in the *reference* preprocessor will suppose that you meant the default API, which is marked by `default` option in config. If none of them is marked — goes for the first in list.
-
-**In online mode** things are getting interesting. Preprocessor actually goes to each of the API web-pages, and collects all method **headers** (right now only `h2` headers are supported). Then it goes through your document's source: when it meets a *reference*, it looks through all the collected methods and replaces the reference with the correct link to it. If method is not found — preprocessor will show warning and leave the reference unchanged. Same will happen if there are several methods with this name in different APIs.
-
-Prefixes, explained before, are supported too.
-
 ## Quick Start
 
 Say, you have an API documentation hosted at the url http://example.com/api-docs
@@ -122,6 +108,20 @@ apilinks is a highly customizable preprocessor. You can tune:
 - and more!
 
 For details look through the following sections.
+
+## How Does It Work?
+
+Preprocessor can work in *online* and *offline* modes.
+
+**In offline mode** it merely replaces *references* to API methods with links to their description. The references are catched by a regular expression. The link url is taken from config and the link *anchor* is generated from the reference automatically.
+
+You can have several different APIs stated in the config. You can use prefixes to point out which API is being *reference*d. Prefixes format may be customized  in the configuration but by default you do it like this: `Client-API: GET user/name`. Here '*Client-API*' is a prefix.
+
+If you don't use prefix in the *reference* preprocessor will suppose that you meant the default API, which is marked by `default` option in config. If none of them is marked — goes for the first in list.
+
+**In online mode** things are getting interesting. Preprocessor actually goes to each of the API web-pages, and collects all method **headers** (right now only `h2` headers are supported). Then it goes through your document's source: when it meets a *reference*, it looks through all the collected methods and replaces the reference with the correct link to it. If method is not found — preprocessor will show warning and leave the reference unchanged. Same will happen if there are several methods with this name in different APIs.
+
+Prefixes, explained before, are supported too.
 
 ## Installation
 
