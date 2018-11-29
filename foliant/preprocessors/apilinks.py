@@ -114,14 +114,14 @@ def convert_to_anchor(reference: str) -> str:
 class Reference:
     '''
     Class representing a reference. It is a reference attribute collection
-    with values defaulting to None.
+    with values defaulting to ''.
     '''
 
-    def __init__(self, source=None, prefix=None, verb=None, command=None):
-        self.source = source
-        self.prefix = prefix
-        self.verb = verb
-        self.command = command
+    def __init__(self, source='', prefix='', verb='', command=''):
+        self.source = source or ''
+        self.prefix = prefix or ''
+        self.verb = verb or ''
+        self.command = command or ''
 
     def init_from_match(self, match):
         '''init values for all reference attributes from a match object'''
@@ -142,6 +142,8 @@ class Preprocessor(BasePreprocessor):
         'ref-regex': DEFAULT_REF_REGEX,
         'output-template': '[{verb} {command}]({url})',
         'targets': [],
+        'trim-if-targets': [],
+        'trim-template': '`{verb} {command}`',
         'API': {},
         'offline': False
     }
@@ -158,6 +160,8 @@ class Preprocessor(BasePreprocessor):
         self.apis = OrderedDict()
         self.default_api = None
         self.set_apis()
+
+        self.counter = 0
 
     def _warning(self, msg: str):
         '''Log warning and print to user'''
@@ -339,26 +343,47 @@ class Preprocessor(BasePreprocessor):
                 self._warning(f'{e} Skipping')
                 return ref.source
 
+            self.counter += 1
             return self.options['output-template'].format(url=url, **ref.__dict__)
 
         return self.link_pattern.sub(_sub, content)
 
+    def trim_prefixes(self, content: str) -> str:
+        def _sub(block) -> str:
+            '''
+            Replaces each occurence of the reference to API method (described
+            by regex in 'ref-regex' option) with its trimmed version.
+            '''
+
+            ref = Reference()
+            ref.init_from_match(block)
+            return self.options['trim-template'].format(**ref.__dict__)
+
+        return self.link_pattern.sub(_sub, content)
+
+    def apply_for_all_files(self, func, log_msg: str):
+        '''Apply function func to all Mardown-files in the working dir'''
+        self.logger.info(log_msg)
+        for markdown_file_path in self.working_dir.rglob('*.md'):
+            with open(markdown_file_path,
+                      encoding='utf8') as markdown_file:
+                content = markdown_file.read()
+
+            processed_content = func(content)
+
+            if processed_content:
+                with open(markdown_file_path,
+                          'w',
+                          encoding='utf8') as markdown_file:
+                    markdown_file.write(processed_content)
+
     def apply(self):
+        self.logger.info('Applying preprocessor')
         if not self.options['targets'] or\
                 self.context['target'] in self.options['targets']:
-            self.logger.info('Applying preprocessor')
 
-            for markdown_file_path in self.working_dir.rglob('*.md'):
-                with open(markdown_file_path,
-                          encoding='utf8') as markdown_file:
-                    content = markdown_file.read()
+            self.apply_for_all_files(self.process_links, 'Converting references')
+        if self.context['target'] in self.options['trim-if-targets']:
+            self.apply_for_all_files(self.trim_prefixes, 'Trimming prefixes')
 
-                processed_content = self.process_links(content)
-
-                if processed_content:
-                    with open(markdown_file_path,
-                              'w',
-                              encoding='utf8') as markdown_file:
-                        markdown_file.write(processed_content)
-
-            self.logger.info('Preprocessor applied')
+        self.logger.info(f'Preprocessor applied. {self.counter} links were added')
