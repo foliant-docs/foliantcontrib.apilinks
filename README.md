@@ -173,6 +173,17 @@ preprocessors:
 `API`
 :   *(required)* A subsection for listing all the APIs and their properties. Unter this section there should be a separate section for each API. The section name represents the API name and, at the same time, the *prefix* used in the references. You need to add at least one API subsection for preprocessor to work.
 
+**API properties**
+
+`url`
+:   *(required)* An API documentation web-page URL. It will be used to construct the full link to the method. In online mode it will also be parsed by preprocessor for validation.
+
+`default`
+:   *(optional)* Only for offline mode. Marker to define the default API. If several APIs are marked default, preprocessor will choose the first of them. If none is marked default — the first API in the list will be chosen. The value of this item should be `true`.
+
+`header-template`
+:   *(optional)* A template string describing the format of the headings in the API documentation web-page. Details in **parsing API web-page** section. Default: `'{verb} {command}'`
+
 ## Online and Offline Modes Comparison
 
 Let's study an example and look how the behavior of the preprocessor will change in online and offline modes.
@@ -314,17 +325,6 @@ You will also see a warning:
 ```
 WARNING: GET /service/healthcheck is present in several APIs (Admin-API, Client-API). Please, use prefix. Skipping
 ```
-
-**API properties**
-
-`url`
-:   *(required)* An API documentation web-page URL. It will be used to construct the full link to the method. In online mode it will also be parsed by preprocessor for validation.
-
-`default`
-:   *(optional)* Only for offline mode. Marker to define the default API. If several APIs are marked default, preprocessor will choose the first of them. If none is marked default — the first API in the list will be chosen. The value of this item should be `true`.
-
-`header-template`
-:   *(optional)* A template string describing the format of the headings in the API documentation web-page. Details in **parsing API web-page** section. Default: `'{verb} {command}'`
 
 ## Capturing References
 
