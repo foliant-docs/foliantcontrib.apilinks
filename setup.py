@@ -1,7 +1,7 @@
 from setuptools import setup
 
 
-SHORT_DESCRIPTION = 'Preprocessor for replacing references to API with actual links.'
+SHORT_DESCRIPTION = 'Preprocessor for replacing references to API methods with links to their description.'
 
 try:
     with open('README.md', encoding='utf8') as readme:
