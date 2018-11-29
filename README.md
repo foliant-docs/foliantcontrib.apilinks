@@ -76,7 +76,7 @@ To authenticate user use API method [GET user/authenticate](http://example.com/c
 To ban user from the website use admin API method [POST admin/ban_user/{user_id}](http://example.com/admin/api-docs/#post-admin-ban_user-user_id)
 ```
 
-Notice that apilinks determined that the first reference is from Client API, and the second one is from the Admin API. How is that possible? Easy: preprocessor parses each API url from the config and stores their methods before looking for references. When the time comes to process the references it already have a list of all methods to validate your reference and to determine which API link should be inserted.
+Notice that apilinks determined that the first reference is from Client API, and the second one is from the Admin API. How is that possible? Easy: preprocessor parses each API url from the config and stores their methods before looking for references. When the time comes to process the references it already has a list of all methods to validate your reference and to determine which API link should be inserted.
 
 But what if we have the same-named method in both of our APIs? In this case you will see a warning:
 
@@ -159,10 +159,15 @@ preprocessors:
 ```
 
 `ref-regex`
-:   *(optional)* regular expression used to catch *references* in the source. Look for details in the **capturing references** section. Default: ```(?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)```
+:   *(optional)* regular expression used to catch *references* in the source. Look for details in the **Capturing References** section.
+Default:
+
+```
+(?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH|LINK|UNLINK)\s+(?P<command>\S+)`)
+```
 
 `output-template`
-:   *(optional)* A template string describing the *output* which will replace the *reference*. More info in the **customizing output** section. Default: `'[{verb} {command}]({url})'`
+:   *(optional)* A template string describing the *output* which will replace the *reference*. More info in the **Customizing Output** section. Default: `'[{verb} {command}]({url})'`
 
 `targets`
 :   *(optional)* List of supported targets for `foliant make` command. If target is not listed here — preprocessor won't be applied. If the list is empty — preprocessor will be applied for any target. Default: `[]`
@@ -171,7 +176,7 @@ preprocessors:
 :   *(optional)* Option determining whether the preprocessor will work in *online* or *offline* mode. Details in the **How Does It Work?** and **Online and Offline Modes Comparison** sections. Default: `False`
 
 `API`
-:   *(required)* A subsection for listing all the APIs and their properties. Unter this section there should be a separate section for each API. The section name represents the API name and, at the same time, the *prefix* used in the references. You need to add at least one API subsection for preprocessor to work.
+:   *(required)* A subsection for listing all the APIs and their properties. Under this section there should be a separate subsection for each API. The section name represents the API name and, at the same time, the *prefix* used in the references. You need to add at least one API subsection for preprocessor to work.
 
 **API properties**
 
@@ -236,19 +241,22 @@ By the way, notice how anchors differ in the two examples. For Remote API prepro
 Source:
 
 ```
-Unprefixed link with misprint: `GET user/sttus`. The link is incorrect, there's no such method in any of the APIs.
+Unprefixed link with misprint: `GET user/sttus`.
+The link is incorrect, there's no such method in any of the APIs.
 ```
 
 In *Offline mode* preprocessor won't do any checks again. No magic, the reference will be replaced with the link to default API from the config:
 
 ```
-Unprefixed link with misprint: [GET user/sttus](http://example.com/api/client/#get-user-sttus). The link is incorrect, there's no such method in any of the APIs.
+Unprefixed link with misprint: [GET user/sttus](http://example.com/api/client/#get-user-sttus).
+The link is incorrect, there's no such method in any of the APIs.
 ```
 
-In *Online mode* won't be able to find the method during validation and the reference won't be replaced at all:
+In *Online mode* preprocessor won't be able to find the method during validation and the reference won't be replaced at all:
 
 ```
-Unprefixed link with misprint: `GET user/sttus`. The link is incorrect, there's no such method in any of the APIs.
+Unprefixed link with misprint: `GET user/sttus`.
+The link is incorrect, there's no such method in any of the APIs.
 ```
 
 During the Foliant project assembly you will see a warning message:
@@ -281,19 +289,22 @@ Prefixed link to the Admin API: [POST user/ban_forever](http://example.com/api/c
 **Example 4**
 
 ```
-Prefixed link to the Remote API with a misprint: `Remote-API: GET billling/info`. Oh no, the method is incorrect again.
+Prefixed link to the Remote API with a misprint: `Remote-API: GET billling/info`.
+Oh no, the method is incorrect again.
 ```
 
-In *Offline mode* preprocessor will perform no checks and just replace the reference with the link to remote API:
+In *Offline mode* preprocessor will perform no checks and just replace the reference with the link to Remote API:
 
 ```
-Prefixed link to the Remote API with a misprint: [GET billling/info](https://remote.net/api-ref/#get-billling-info). Oh no, the method is incorrect again.
+Prefixed link to the Remote API with a misprint: [GET billling/info](https://remote.net/api-ref/#get-billling-info).
+Oh no, the method is incorrect again.
 ```
 
 *Online mode*, on the other hand, will make its homework. It will check whether the Remote API actually has the method *GET billling/info*. Finding out that it hasn't it will leave the reference unchanged:
 
 ```
-Prefixed link to the Remote API with a misprint: `Remote-API: GET billling/info`. Oh no, the method is incorrect again.
+Prefixed link to the Remote API with a misprint: `Remote-API: GET billling/info`.
+Oh no, the method is incorrect again.
 ```
 
 ...and warn us with the message:
@@ -333,7 +344,7 @@ apilinks uses regular expressions to capture *references* to API methods in Mark
 The default reg-ex is as following:
 
 ```re
-(?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)
+(?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH|LINK|UNLINK)\s+(?P<command>\S+)`)
 ```
 
 This expression accepts references like these:
@@ -347,7 +358,7 @@ Group | Required | Description
 ----- | -------- | -----------
 source | YES | The full original reference string
 prefix | NO | Prefix pointing to the name of the API from config
-verb | NO | HTTP verb as `GET`, `POST, etc
+verb | NO | HTTP verb as `GET`, `POST`, etc
 command | YES | the full method resource as it is stated in the API header
 
 To redefine the regular expression add an option `reg-regex` to the preprocessor config.
@@ -378,7 +389,7 @@ preprocessors:
       output-template: '[{verb} {command}]({url})',
 ```
 
-> Don't forget the single quotes around the template. This way we say to yaml processor that this is a string for it not to be confused with curly braces.
+> Don't forget the single quotes around the template. This way we say to yaml engine that this is a string for it not to be confused with curly braces.
 
 With the default template, the reference string will be replaced by something like that:
 
@@ -402,7 +413,7 @@ apilinks goes through the API web-page content and gathers all the methods which
 
 To do this preprocessor scans each HTML `h2` tag and stores its `id` attribute (which is an *anchor* of the link to be constructed) and the contents of the tag (the *heading* itself).
 
-For example in this link^
+For example in this link:
 
 ```html
 <h2 id="get-user-info">GET user/info</h2>

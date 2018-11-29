@@ -1,3 +1,8 @@
+# 1.0.1
+
+- Update docs, fix anchor error
+- Add all HTTP verbs to regular expression
+
 # 1.0.0
 
 -   Initial release.

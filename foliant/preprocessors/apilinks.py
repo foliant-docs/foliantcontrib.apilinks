@@ -9,6 +9,13 @@ from lxml import etree
 from foliant.preprocessors.base import BasePreprocessor
 from foliant.utils import output
 
+HTTP_VERBS = ('OPTIONS', 'GET', 'HEAD', 'POST',
+              'PUT', 'DELETE', 'TRACE', 'CONNECT',
+              'PATCH', 'LINK', 'UNLINK')
+
+DEFAULT_REF_REGEX = r'(?P<source>`((?P<prefix>[\w-]+):\s*)?' +\
+                    rf'(?P<verb>{"|".join(HTTP_VERBS)})\s+' +\
+                    r'(?P<command>\S+)`)'
 DEFAULT_HEADER_TEMPLATE = '{verb} {command}'
 REQUIRED_REF_REGEX_GROUPS = ['source', 'command']
 
@@ -91,7 +98,7 @@ def convert_to_anchor(reference: str) -> str:
 
     result = ''
     accum = False
-    header = reference.strip()
+    header = reference
     for char in header:
         if char == '_' or char.isalpha():
             if accum:
@@ -101,7 +108,7 @@ def convert_to_anchor(reference: str) -> str:
                 result += char.lower()
         else:
             accum = True
-    return result
+    return result.strip(' -')
 
 
 class Reference:
@@ -132,9 +139,7 @@ class Reference:
 
 class Preprocessor(BasePreprocessor):
     defaults = {
-        'ref-regex': r'(?P<source>`((?P<prefix>[\w-]+):\s*)?'
-                     r'(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+'
-                     r'(?P<command>\S+)`)',
+        'ref-regex': DEFAULT_REF_REGEX,
         'output-template': '[{verb} {command}]({url})',
         'targets': [],
         'API': {},
