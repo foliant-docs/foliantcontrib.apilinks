@@ -1,3 +1,7 @@
+# 1.0.2
+
+- Trim prefixes function
+
 # 1.0.1
 
 - Update docs, fix anchor error
