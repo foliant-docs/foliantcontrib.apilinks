@@ -168,7 +168,7 @@ preprocessors:
 :   *(optional)* List of supported targets for `foliant make` command. If target is not listed here — preprocessor won't be applied. If the list is empty — preprocessor will be applied for any target. Default: `[]`
 
 `offline`
-:   *(optional)* Option determining whether the preprocessor will work in *online* or *offline* mode. Details in the **Quick Start** and **Online and Offline Modes Comparison** sections. Default: `False`
+:   *(optional)* Option determining whether the preprocessor will work in *online* or *offline* mode. Details in the **How Does It Work?** and **Online and Offline Modes Comparison** sections. Default: `False`
 
 `API`
 :   *(required)* A subsection for listing all the APIs and their properties. Unter this section there should be a separate section for each API. The section name represents the API name and, at the same time, the *prefix* used in the references. You need to add at least one API subsection for preprocessor to work.
