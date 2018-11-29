@@ -1,3 +1,7 @@
+# 1.0.3
+
+- Add require-prefix option
+
 # 1.0.2
 
 - Trim prefixes function

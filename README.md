@@ -144,6 +144,7 @@ The preprocessor has a lot of options. For your convenience the required options
 preprocessors:
 - apilinks:
     ref-regex: *ref_pattern
+    require-prefix: false
     output-template: '[{verb} {command}]({url})',
     targets:
         - site
@@ -169,6 +170,9 @@ Default:
 ```
 (?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH|LINK|UNLINK)\s+(?P<command>\S+)`)
 ```
+
+`require-prefix`
+:   *(optional)* if this is `true`, only *references* with prefix will be transformed. Ordinary links like `GET user/info` will be ignored. Default: `false`
 
 `output-template`
 :   *(optional)* A template string describing the *output* which will replace the *reference*. More info in the **Customizing Output** section. Default: `'[{verb} {command}]({url})'`

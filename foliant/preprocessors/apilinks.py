@@ -140,6 +140,7 @@ class Reference:
 class Preprocessor(BasePreprocessor):
     defaults = {
         'ref-regex': DEFAULT_REF_REGEX,
+        'require-prefix': False,
         'output-template': '[{verb} {command}]({url})',
         'targets': [],
         'trim-if-targets': [],
@@ -334,6 +335,9 @@ class Preprocessor(BasePreprocessor):
             ref.init_from_match(block)
             url = None
 
+            if self.options['require-prefix'] and not ref.prefix:
+                return ref.source
+
             try:
                 if self.offline:
                     url = self.gen_url_offline(ref)
@@ -381,8 +385,8 @@ class Preprocessor(BasePreprocessor):
         self.logger.info('Applying preprocessor')
         if not self.options['targets'] or\
                 self.context['target'] in self.options['targets']:
-
             self.apply_for_all_files(self.process_links, 'Converting references')
+
         if self.context['target'] in self.options['trim-if-targets']:
             self.apply_for_all_files(self.trim_prefixes, 'Trimming prefixes')
 
