@@ -1,15 +1,12 @@
 # apilinks Preprocessor for Foliant
 
-Preprocessor for replacing API *reference*s in markdown files with links to actual method description on the API dcumentation web-page.
+Preprocessor for replacing API *reference*s in markdown files with links to actual method description on the API documentation web-page.
 
-Glossary:
+## Installation
 
-- **reference** — reference to an API method in the source file. The one to be replaced with the link, e.g. `GET user/config`
-- **verb** — HTTP method, e.g. `GET`, `POST`, etc.
-- **command** — resource used to represent method on the API documentation webpage, e.g. `service/healthcheck`.
-- **output** — string, which will replace the *reference*.
-- **header** — HTML header on the API documentation web-page of the method description, e.g. `<h2 id="get-user-config">GET user/config</h2>`
-- **anchor** — web-anchor leading to the specific *header* on the API documentation web-page, e.g. `#get-user-config`
+```shell
+$ pip install foliantcontrib.apilinks
+```
 
 ## Quick Start
 
@@ -109,6 +106,15 @@ apilinks is a highly customizable preprocessor. You can tune:
 
 For details look through the following sections.
 
+Glossary:
+
+- **reference** — reference to an API method in the source file. The one to be replaced with the link, e.g. `GET user/config`
+- **verb** — HTTP method, e.g. `GET`, `POST`, etc.
+- **command** — resource used to represent method on the API documentation webpage, e.g. `service/healthcheck`.
+- **output** — string, which will replace the *reference*.
+- **header** — HTML header on the API documentation web-page of the method description, e.g. `<h2 id="get-user-config">GET user/config</h2>`
+- **anchor** — web-anchor leading to the specific *header* on the API documentation web-page, e.g. `#get-user-config`
+
 ## How Does It Work?
 
 Preprocessor can work in *online* and *offline* modes.
@@ -122,12 +128,6 @@ If you don't use prefix in the *reference* preprocessor will suppose that you me
 **In online mode** things are getting interesting. Preprocessor actually goes to each of the API web-pages, and collects all method **headers** (right now only `h2` headers are supported). Then it goes through your document's source: when it meets a *reference*, it looks through all the collected methods and replaces the reference with the correct link to it. If method is not found — preprocessor will show warning and leave the reference unchanged. Same will happen if there are several methods with this name in different APIs.
 
 Prefixes, explained before, are supported too.
-
-## Installation
-
-```shell
-$ pip install foliantcontrib.apilinks
-```
 
 ## Config
 
