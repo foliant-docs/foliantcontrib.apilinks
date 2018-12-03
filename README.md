@@ -111,6 +111,7 @@ Glossary:
 - **reference** — reference to an API method in the source file. The one to be replaced with the link, e.g. `GET user/config`
 - **verb** — HTTP method, e.g. `GET`, `POST`, etc.
 - **command** — resource used to represent method on the API documentation webpage, e.g. `service/healthcheck`.
+- **endpoint prefix** — A prefix from server root to the command. If the command is `user/status` and full resource is `/api/v0/user/satus` then the endpoint-prefix should be stated `/api/v0`. In references you can use either full resource (`{endpoint_prefix}/{command}`) or just the command. apilinks will sort it out for you.
 - **output** — string, which will replace the *reference*.
 - **header** — HTML header on the API documentation web-page of the method description, e.g. `<h2 id="get-user-config">GET user/config</h2>`
 - **anchor** — web-anchor leading to the specific *header* on the API documentation web-page, e.g. `#get-user-config`
@@ -144,6 +145,7 @@ The preprocessor has a lot of options. For your convenience the required options
 preprocessors:
 - apilinks:
     ref-regex: *ref_pattern
+    ignoring-prefix: Ignore
     require-prefix: false
     output-template: '[{verb} {command}]({url})',
     targets:
@@ -161,6 +163,7 @@ preprocessors:
         Admin-API:
             url: http://example.com/api/client
             header-template: '{command}'
+            endpoint-prefix: /api/v0
 ```
 
 `ref-regex`
@@ -170,6 +173,9 @@ Default:
 ```
 (?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH|LINK|UNLINK)\s+(?P<command>\S+)`)
 ```
+
+`ignoring-prefix`
+:   *(optional)* A default prefix for ignoring references. If apilinks meets a reference with this prefix it leaves it unchanged. Default: `Ignore`
 
 `require-prefix`
 :   *(optional)* if this is `true`, only *references* with prefix will be transformed. Ordinary links like `GET user/info` will be ignored. Default: `false`
@@ -202,6 +208,9 @@ Default:
 
 `header-template`
 :   *(optional)* A template string describing the format of the headings in the API documentation web-page. Details in **parsing API web-page** section. Default: `'{verb} {command}'`
+
+`endpoint-prefix`
+:   *(optional)* The endpoint prefix from the server root to API methods. If is stated — apilinks can divide the command in the reference and search for it more accurately. Also you could use it in templates. More info coming soon. Default: `''`
 
 ## Online and Offline Modes Comparison
 
@@ -373,7 +382,7 @@ Group | Required | Description
 source | YES | The full original reference string
 prefix | NO | Prefix pointing to the name of the API from config
 verb | NO | HTTP verb as `GET`, `POST`, etc
-command | YES | the full method resource as it is stated in the API header
+command | YES | the full method resource as it is stated in the API header (may include endpoint prefix)
 
 To redefine the regular expression add an option `reg-regex` to the preprocessor config.
 
@@ -385,7 +394,7 @@ preprocessors:
       ref-regex: '(?P<source>`((?P<prefix>[\w-]+):\s*)(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)'
 ```
 
-> Don't forget the single quotes around the regular expression. This way we say to yaml engine that this is a string.
+> This example is for illustrative purposes only. You can achieve the same goal by just switching on the `require-prefix` option.
 
 Now the references without prefix (`UPDATE user/details`) will be ignored.
 
@@ -419,7 +428,8 @@ url | Full url to the method description | `http://example.com/api/#get-user-inf
 source | Full original reference string | \``Client-API: GET user/info`\`
 prefix | Prefix used in the reference | `Client-API`
 verb | HTTP verb used in the reference | `GET`
-command | API command being referenced | `user/info`
+command | API command being referenced with endpoint prefix removed | `user/info`
+endpoint_prefix | Endpoint prefix to the API (if `endpoint-prefix` option is filled in) | `/api/v0`
 
 ## Parsing API Web-page
 
@@ -479,5 +489,4 @@ property | description | example
 -------- | ----------- | -------
 verb | HTTP verb used in the reference | `GET`
 command | API command being referenced | `user/info`
-
-
+endpoint_prefix | Endpoint prefix to the API (if `endpoint-prefix` option is filled in) | `/api/v0`
