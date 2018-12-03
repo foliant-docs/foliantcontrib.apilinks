@@ -70,12 +70,13 @@ class API:
         Parse self.url and generate headers dictionary {'anchor': header_title}.
         If self.offline == true — returns an empty dictionary.
 
-        May thrown HTTPError if url is incorrect or unavailable.
+        May throw HTTPError (403, 404, ...) or URLError if url is incorrect or
+        unavailable.
         '''
 
         if self.offline:
             return {}
-        page = request.urlopen(self.url).read()  # may throw HTTPError
+        page = request.urlopen(self.url).read()  # may throw HTTPError, URLError
         headers = {}
         for event, elem in etree.iterparse(BytesIO(page), html=True):
             if elem.tag == 'h2':
@@ -192,8 +193,8 @@ class Preprocessor(BasePreprocessor):
                 self.apis[api] = api_obj
                 if api_dict.get('default', False) and self.default_api is None:
                     self.default_api = api_obj
-            except error.HTTPError:
-                self._warning(f'Could not open url {self.url} for API {api}. '
+            except (error.HTTPError, error.URLError) as e:
+                self._warning(f'Could not open url {api_dict["url"]} for API {api}: {e}. '
                               'Skipping.')
         if not self.apis:
             raise RuntimeError('No APIs are set up. Try using offline mode')
