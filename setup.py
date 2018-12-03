@@ -20,7 +20,7 @@ setup(
     author='Daniil Minukhin',
     author_email='ddddsa@gmail.com',
     url='https://github.com/foliant-docs/foliantcontrib.apilinks',
-    packages=['foliant.preprocessors'],
+    packages=['foliant.preprocessors.apilinks'],
     license='MIT',
     platforms='any',
     install_requires=[

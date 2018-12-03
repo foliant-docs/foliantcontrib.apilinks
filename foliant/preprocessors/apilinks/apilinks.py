@@ -1,143 +1,16 @@
 '''apilinks preprocessor for Foliant. Replaces API references with links to API
 docs'''
 import re
-from io import BytesIO
 from collections import OrderedDict
-from urllib import request, error
-from lxml import etree
+from urllib import error
 
 from foliant.preprocessors.base import BasePreprocessor
 from foliant.utils import output
 
-HTTP_VERBS = ('OPTIONS', 'GET', 'HEAD', 'POST',
-              'PUT', 'DELETE', 'TRACE', 'CONNECT',
-              'PATCH', 'LINK', 'UNLINK')
+from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
+                        REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
 
-DEFAULT_REF_REGEX = r'(?P<source>`((?P<prefix>[\w-]+):\s*)?' +\
-                    rf'(?P<verb>{"|".join(HTTP_VERBS)})\s+' +\
-                    r'(?P<command>\S+)`)'
-DEFAULT_HEADER_TEMPLATE = '{verb} {command}'
-REQUIRED_REF_REGEX_GROUPS = ['source', 'command']
-
-DEFAULT_IGNORING_PREFIX = 'Ignore'
-
-
-class GenURLError(Exception):
-    '''Exception in the full url generation process'''
-    pass
-
-
-class API:
-    '''Helper class representing an API documentation website'''
-
-    def __init__(self, name: str, url: str, htempl: str, offline: bool):
-        self.name = name
-        self.url = url.rstrip('/')
-        self.offline = offline
-        self.headers = self._fill_headers()
-        self.header_template = htempl
-
-    def format_header(self, format_dict: dict) -> str:
-        '''
-        Generate a header of correct format used in the API documentation
-        website.
-
-        format_dict (dict) — dictionary with values needed to generate a header
-                             like 'verb' or 'command'
-        '''
-        return self.header_template.format(**format_dict)
-
-    def format_anchor(self, format_dict):
-        '''
-        Generate an anchor of correct format used to represend headers  in the
-        API documentation website.
-
-        format_dict (dict) — dictionary with values needed to generate an anchor
-                             like 'verb' or 'command'
-        '''
-        return convert_to_anchor(self.format_header(format_dict))
-
-    def gen_full_url(self, format_dict):
-        '''
-        Generate a full url to a method documentation on the API documentation
-        website.
-
-        format_dict (dict) — dictionary with values needed to generate an URL
-                             like 'verb' or 'command'
-        '''
-        return f'{self.url}/#{self.format_anchor(format_dict)}'
-
-    def _fill_headers(self) -> dict:
-        '''
-        Parse self.url and generate headers dictionary {'anchor': header_title}.
-        If self.offline == true — returns an empty dictionary.
-
-        May throw HTTPError (403, 404, ...) or URLError if url is incorrect or
-        unavailable.
-        '''
-
-        if self.offline:
-            return {}
-        page = request.urlopen(self.url).read()  # may throw HTTPError, URLError
-        headers = {}
-        for event, elem in etree.iterparse(BytesIO(page), html=True):
-            if elem.tag == 'h2':
-                anchor = elem.attrib.get('id', None)
-                if anchor:
-                    headers[anchor] = elem.text
-        return headers
-
-    def __str__(self):
-        return f'API({self.name})'
-
-
-def convert_to_anchor(reference: str) -> str:
-    '''
-    Convert reference string into correct anchor
-
-    >>> convert_to_anchor('GET /endpoint/method{id}')
-    'get-endpoint-method-id'
-    '''
-
-    result = ''
-    accum = False
-    header = reference
-    for char in header:
-        if char == '_' or char.isalpha():
-            if accum:
-                accum = False
-                result += f'-{char.lower()}'
-            else:
-                result += char.lower()
-        else:
-            accum = True
-    return result.strip(' -')
-
-
-class Reference:
-    '''
-    Class representing a reference. It is a reference attribute collection
-    with values defaulting to ''.
-    '''
-
-    def __init__(self, source='', prefix='', verb='', command=''):
-        self.source = source or ''
-        self.prefix = prefix or ''
-        self.verb = verb or ''
-        self.command = command or ''
-
-    def init_from_match(self, match):
-        '''init values for all reference attributes from a match object'''
-
-        groups = match.groupdict().keys()
-        if 'source' in groups:
-            self.source = match.group('source')
-        if 'prefix' in groups:
-            self.prefix = match.group('prefix')
-        if 'verb' in groups:
-            self.verb = match.group('verb')
-        if 'command' in groups:
-            self.command = match.group('command')
+from .classes import API, Reference, GenURLError
 
 
 class Preprocessor(BasePreprocessor):
@@ -174,6 +47,22 @@ class Preprocessor(BasePreprocessor):
         output(f'WARNING: {msg}', self.quiet)
         self.logger.warning(msg)
 
+    def _apply_for_all_files(self, func, log_msg: str):
+        '''Apply function func to all Mardown-files in the working dir'''
+        self.logger.info(log_msg)
+        for markdown_file_path in self.working_dir.rglob('*.md'):
+            with open(markdown_file_path,
+                      encoding='utf8') as markdown_file:
+                content = markdown_file.read()
+
+            processed_content = func(content)
+
+            if processed_content:
+                with open(markdown_file_path,
+                          'w',
+                          encoding='utf8') as markdown_file:
+                    markdown_file.write(processed_content)
+
     def set_apis(self):
         '''
         Fills self.apis dictionary with API objects representing each API from
@@ -192,7 +81,8 @@ class Preprocessor(BasePreprocessor):
                               api_dict['url'],
                               api_dict.get('header-template',
                                            DEFAULT_HEADER_TEMPLATE),
-                              self.offline)
+                              self.offline,
+                              api_dict.get('endpoint-prefix', ''))
                 self.apis[api] = api_obj
                 if api_dict.get('default', False) and self.default_api is None:
                     self.default_api = api_obj
@@ -229,7 +119,7 @@ class Preprocessor(BasePreprocessor):
                               f'{group}. Preprocessor may not work right')
         return pattern
 
-    def find_url(self, verb: str, command: str) -> str:
+    def find_url(self, ref: Reference) -> str:
         '''
         Goes through every header list of every API and looks for the method
         represented by verb and command.
@@ -241,22 +131,20 @@ class Preprocessor(BasePreprocessor):
         command (str) — command of the method.
         '''
 
-        found = []
+        found = {}
         for api_name in self.apis:
             api = self.apis[api_name]
-            anchor = api.format_anchor(dict(verb=verb, command=command))
-            if anchor in api.headers:
-                found.append(api)
+            url = api.find_reference(ref)
+            if url:
+                found[api_name] = url
         if len(found) == 1:
-            anchor = found[0].format_anchor(dict(verb=verb, command=command))
-            return f'{found[0].url}/#{anchor}'
+            return next(iter(found.values()))
         elif len(found) > 1:
-            found_list = ', '.join([api.name for api in found])
-            raise GenURLError(f'{verb} {command} is present in several APIs'
-                              f' ({found_list}). Please, use prefix.')
-        raise GenURLError(f'Cannot find method {verb} {command}.')
+            raise GenURLError(f'{ref.verb} {ref.command} is present in several APIs'
+                              f' ({", ".join(found)}). Please, use prefix.')
+        raise GenURLError(f'Cannot find method {ref.verb} {ref.command}.')
 
-    def get_url(self, prefix: str, verb: str, command: str):
+    def get_url(self, ref: Reference):
         '''
         Goes through every header list of the API with name == prefix and looks
         for the method represented by verb and command.
@@ -270,15 +158,16 @@ class Preprocessor(BasePreprocessor):
         command (str) — command of the method.
         '''
 
-        if prefix in self.apis:
-            api = self.apis[prefix]
-            anchor = api.format_anchor(dict(verb=verb, command=command))
-            if anchor in api.headers:
-                return api.gen_full_url(dict(verb=verb, command=command))
+        if ref.prefix in self.apis:
+            api = self.apis[ref.prefix]
+            url = api.find_reference(ref)
+            if url:
+                return url
+            else:
+                raise GenURLError(f'Cannot find method {ref.verb} {ref.command} in {ref.prefix}.')
         else:
-            raise GenURLError(f'"{prefix}" is a wrong prefix. Should be one of: '
+            raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
                               f'{", ".join(self.apis.keys())}.')
-        raise GenURLError(f'Cannot find method {verb} {command} in {prefix}.')
 
     def gen_url_offline(self, ref: Reference) -> str:
         '''
@@ -319,9 +208,9 @@ class Preprocessor(BasePreprocessor):
         '''
 
         if ref.prefix:
-            return self.get_url(ref.prefix, ref.verb, ref.command)
+            return self.get_url(ref)
         else:
-            return self.find_url(ref.verb, ref.command)
+            return self.find_url(ref)
 
     def process_links(self, content: str) -> str:
         def _sub(block) -> str:
@@ -371,29 +260,13 @@ class Preprocessor(BasePreprocessor):
 
         return self.link_pattern.sub(_sub, content)
 
-    def apply_for_all_files(self, func, log_msg: str):
-        '''Apply function func to all Mardown-files in the working dir'''
-        self.logger.info(log_msg)
-        for markdown_file_path in self.working_dir.rglob('*.md'):
-            with open(markdown_file_path,
-                      encoding='utf8') as markdown_file:
-                content = markdown_file.read()
-
-            processed_content = func(content)
-
-            if processed_content:
-                with open(markdown_file_path,
-                          'w',
-                          encoding='utf8') as markdown_file:
-                    markdown_file.write(processed_content)
-
     def apply(self):
         self.logger.info('Applying preprocessor')
         if not self.options['targets'] or\
                 self.context['target'] in self.options['targets']:
-            self.apply_for_all_files(self.process_links, 'Converting references')
+            self._apply_for_all_files(self.process_links, 'Converting references')
 
         if self.context['target'] in self.options['trim-if-targets']:
-            self.apply_for_all_files(self.trim_prefixes, 'Trimming prefixes')
+            self._apply_for_all_files(self.trim_prefixes, 'Trimming prefixes')
 
         self.logger.info(f'Preprocessor applied. {self.counter} links were added')
