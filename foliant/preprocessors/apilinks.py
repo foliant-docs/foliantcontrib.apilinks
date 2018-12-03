@@ -200,7 +200,7 @@ class Preprocessor(BasePreprocessor):
                 self._warning(f'Could not open url {api_dict["url"]} for API {api}: {e}. '
                               'Skipping.')
         if not self.apis:
-            raise RuntimeError('No APIs are set up. Try using offline mode')
+            raise RuntimeError('No APIs are set up')
         if self.default_api is None:
             first_api_name = list(self.apis.keys())[0]
             self.default_api = self.apis[first_api_name]
@@ -337,7 +337,6 @@ class Preprocessor(BasePreprocessor):
 
             ref = Reference()
             ref.init_from_match(block)
-            # url = None
 
             if self.options['require-prefix'] and not ref.prefix:
                 return ref.source
@@ -351,7 +350,7 @@ class Preprocessor(BasePreprocessor):
                 else:
                     url = self.gen_url(ref)
             except GenURLError as e:
-                self._warning(f'{e} Skipping')
+                self._warning(f'{e} Skipping.')
                 return ref.source
 
             self.counter += 1

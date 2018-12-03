@@ -144,6 +144,7 @@ The preprocessor has a lot of options. For your convenience the required options
 preprocessors:
 - apilinks:
     ref-regex: *ref_pattern
+    ignoring-prefix: Ignore
     require-prefix: false
     output-template: '[{verb} {command}]({url})',
     targets:
@@ -170,6 +171,9 @@ Default:
 ```
 (?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH|LINK|UNLINK)\s+(?P<command>\S+)`)
 ```
+
+`ignoring-prefix`
+:   *(optional)* A default prefix for ignoring references. If apilinks meets a reference with this prefix it leaves it unchanged. Default: `Ignore`
 
 `require-prefix`
 :   *(optional)* if this is `true`, only *references* with prefix will be transformed. Ordinary links like `GET user/info` will be ignored. Default: `false`
@@ -385,7 +389,7 @@ preprocessors:
       ref-regex: '(?P<source>`((?P<prefix>[\w-]+):\s*)(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)'
 ```
 
-> Don't forget the single quotes around the regular expression. This way we say to yaml engine that this is a string.
+> This example is for illustrative purposes only. You can achieve the same goal by just switching on the `require-prefix` option. 
 
 Now the references without prefix (`UPDATE user/details`) will be ignored.
 
