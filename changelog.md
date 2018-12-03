@@ -1,7 +1,8 @@
 # 1.0.4
 
 -   Fix not catching errors from urllib
--   add 'ignoring-prefix' option
+-   Added 'ignoring-prefix' option
+-   Added 'endpoint-prefix' option into API->Name section
 
 # 1.0.3
 
