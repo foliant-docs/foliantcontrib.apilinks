@@ -119,24 +119,22 @@ class Preprocessor(BasePreprocessor):
                               f'{group}. Preprocessor may not work right')
         return pattern
 
-    def find_url(self, ref: Reference) -> str:
+    def find_api(self, ref: Reference) -> API:
         '''
         Goes through every header list of every API and looks for the method
-        represented by verb and command.
+        represented by verb and command. Returns the API which has this method.
 
         Trows GenURLError if the method is not found or if the  method with
         such attributes occurs in several APIs.
 
-        verb (str) — verb of the method (GET, POST, etc);
-        command (str) — command of the method.
+        ref (Reference) — Reference object for which the API should be found.
         '''
 
         found = {}
         for api_name in self.apis:
             api = self.apis[api_name]
-            url = api.find_reference(ref)
-            if url:
-                found[api_name] = url
+            if api.find_reference(ref):
+                found[api_name] = api
         if len(found) == 1:
             return next(iter(found.values()))
         elif len(found) > 1:
@@ -144,73 +142,68 @@ class Preprocessor(BasePreprocessor):
                               f' ({", ".join(found)}). Please, use prefix.')
         raise GenURLError(f'Cannot find method {ref.verb} {ref.command}.')
 
-    def get_url(self, ref: Reference):
+    def get_api(self, ref: Reference) -> API:
         '''
         Goes through every header list of the API with name == prefix and looks
-        for the method represented by verb and command.
+        for the method represented by reference.
 
         Trows GenURLError if the method is not found or if there's no API with
         such name (the API may be in config but its URL is unavailable).
 
-        prefix (str) — prefix used in the reference. Must equal one of the APIs
-                       names.
-        verb (str) — verb of the method (GET, POST, etc);
-        command (str) — command of the method.
+        ref (Reference) — Reference object for which the API should be found.
         '''
 
         if ref.prefix in self.apis:
             api = self.apis[ref.prefix]
-            url = api.find_reference(ref)
-            if url:
-                return url
+            if api.find_reference(ref):
+                return api
             else:
                 raise GenURLError(f'Cannot find method {ref.verb} {ref.command} in {ref.prefix}.')
         else:
             raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
                               f'{", ".join(self.apis.keys())}.')
 
-    def gen_url_offline(self, ref: Reference) -> str:
+    def assume_api(self, ref: Reference) -> API:
         '''
-        Generates a full URL to the method referenced by ref.
+        Finds the correct API object by by method reference.
 
-        If ref has prefix — take the url from API which name == prefix.
+        If ref has prefix — return API with name == prefix.
         If there's no such API in config — throw GenURLError.
 
-        If ref has no prefix — take url from the default API. If there's no
+        If ref has no prefix — return the default API. If there's no
         default API — throw GenURLError.
 
         Does not check whether the method actually exists on the documentation
         web-page. Should be used when self.offline == True.
 
-        ref (Reference) — Reference object for which the url should be generated;
+        ref (Reference) — Reference object for which the API should be found;
         '''
 
         if ref.prefix:
             if ref.prefix not in self.apis:
                 raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
                                   f'{", ".join(self.apis.keys())}.')
-            api = self.apis[ref.prefix]
+            return self.apis[ref.prefix]
         else:
             if self.default_api is None:
                 raise GenURLError(f'Default API is not set.')
-            api = self.default_api
-        return api.gen_full_url(ref.__dict__)
+            return self.default_api
 
-    def gen_url(self, ref: Reference) -> str:
+    def determine_api(self, ref: Reference) -> API:
         '''
-        Generates a full URL to the method referenced by ref.
+        Determines the right API object to whose method ref referenced.
 
         Checks whether the method actually exists on the documentation
         web-page. If not — raises GenURLError. Should be used when
         self.offline == False.
 
-        ref (Reference) — Reference object for which the url should be generated;
+        ref (Reference) — Reference object for which the API should be determined;
         '''
 
         if ref.prefix:
-            return self.get_url(ref)
+            return self.get_api(ref)
         else:
-            return self.find_url(ref)
+            return self.find_api(ref)
 
     def process_links(self, content: str) -> str:
         def _sub(block) -> str:
@@ -234,14 +227,13 @@ class Preprocessor(BasePreprocessor):
                 return ref.source
 
             try:
-                if self.offline:
-                    url = self.gen_url_offline(ref)
-                else:
-                    url = self.gen_url(ref)
+                api = self.assume_api(ref) if self.offline else self.determine_api(ref)
             except GenURLError as e:
                 self._warning(f'{e} Skipping.')
                 return ref.source
 
+            ref = ref.convert_to_api_reference(api.endpoint_prefix)
+            url = api.gen_full_url(ref.__dict__)
             self.counter += 1
             return self.options['output-template'].format(url=url, **ref.__dict__)
 

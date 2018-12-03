@@ -128,15 +128,15 @@ class API:
         '''
         return f'{self.url}/#{self.format_anchor(format_dict)}'
 
-    def find_reference(self, ref: Reference) -> str:
-        '''Look for method by its reference and, if found, return a full link
-        to it. Return None if not found.
+    def find_reference(self, ref: Reference) -> bool:
+        '''
+        Look for method by its reference and, if found, return True.
+        If not — False.
         '''
 
         apiref = ref.convert_to_api_reference(self.endpoint_prefix)
         anchor = self.format_anchor(apiref.__dict__)
-        if anchor in self.headers:
-            return self.gen_full_url(apiref.__dict__)
+        return anchor in self.headers
 
     def __str__(self):
         return f'<API: {self.name}>'
