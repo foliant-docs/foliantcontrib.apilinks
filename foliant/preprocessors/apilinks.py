@@ -19,6 +19,8 @@ DEFAULT_REF_REGEX = r'(?P<source>`((?P<prefix>[\w-]+):\s*)?' +\
 DEFAULT_HEADER_TEMPLATE = '{verb} {command}'
 REQUIRED_REF_REGEX_GROUPS = ['source', 'command']
 
+DEFAULT_IGNORING_PREFIX = 'Ignore'
+
 
 class GenURLError(Exception):
     '''Exception in the full url generation process'''
@@ -142,6 +144,7 @@ class Preprocessor(BasePreprocessor):
     defaults = {
         'ref-regex': DEFAULT_REF_REGEX,
         'require-prefix': False,
+        'ignoring-prefix': DEFAULT_IGNORING_PREFIX,
         'output-template': '[{verb} {command}]({url})',
         'targets': [],
         'trim-if-targets': [],
@@ -334,9 +337,12 @@ class Preprocessor(BasePreprocessor):
 
             ref = Reference()
             ref.init_from_match(block)
-            url = None
+            # url = None
 
             if self.options['require-prefix'] and not ref.prefix:
+                return ref.source
+
+            if ref.prefix == self.options['ignoring-prefix']:
                 return ref.source
 
             try:
