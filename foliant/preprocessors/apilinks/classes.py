@@ -4,6 +4,8 @@ from io import BytesIO
 from lxml import etree
 from urllib import request
 
+from .tools import convert_to_anchor, ensure_root
+
 
 class Reference:
     '''
@@ -19,7 +21,7 @@ class Reference:
         self.source = source or ''
         self.prefix = prefix or ''
         self.verb = verb or ''
-        self.command = command.strip('/ ') or ''
+        self.command = ensure_root(command)
 
     def init_from_match(self, match):
         '''init values for all reference attributes from a match object'''
@@ -32,7 +34,7 @@ class Reference:
         if 'verb' in groups:
             self.verb = match.group('verb')
         if 'command' in groups:
-            self.command = match.group('command').strip('/ ')
+            self.command = ensure_root(match.group('command'))
 
     def convert_to_api_reference(self, endpoint_prefix):
         '''Profided an endpoint prefix converts Reference instance into an
@@ -49,18 +51,15 @@ class APIReference(Reference):
 
     def __init__(self, endpoint_prefix='', **kwargs):
         super().__init__(**kwargs)
-        self.endpoint_prefix = endpoint_prefix or ''
+        self.endpoint_prefix = ensure_root(endpoint_prefix) or ''
         if self.endpoint_prefix:
-            # ensure that it starts with '/'
-            self.endpoint_prefix = '/' + self.endpoint_prefix.strip('/ ')
             self._fix_command()
 
     def _fix_command(self):
         '''Remove endpoint prefix from the beginning of command'''
 
-        eps = self.endpoint_prefix.strip('/')
-        if self.command.startswith(eps):
-            self.command = self.command[len(eps):].strip('/')
+        if self.command.startswith(self.endpoint_prefix):
+            self.command = self.command[len(self.endpoint_prefix):]
 
 
 class API:
@@ -140,29 +139,6 @@ class API:
 
     def __str__(self):
         return f'<API: {self.name}>'
-
-
-def convert_to_anchor(reference: str) -> str:
-    '''
-    Convert reference string into correct anchor
-
-    >>> convert_to_anchor('GET /endpoint/method{id}')
-    'get-endpoint-method-id'
-    '''
-
-    result = ''
-    accum = False
-    header = reference
-    for char in header:
-        if char == '_' or char.isalpha():
-            if accum:
-                accum = False
-                result += f'-{char.lower()}'
-            else:
-                result += char.lower()
-        else:
-            accum = True
-    return result.strip(' -')
 
 
 class GenURLError(Exception):

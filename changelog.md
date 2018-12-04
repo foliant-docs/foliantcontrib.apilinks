@@ -1,3 +1,7 @@
+# 1.0.5
+
+-   Now both command and enpoint prefix are ensured to start from root (/)
+
 # 1.0.4
 
 -   Fix not catching errors from urllib
