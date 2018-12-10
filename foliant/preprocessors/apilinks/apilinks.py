@@ -11,20 +11,23 @@ from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
                         REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
 
 from .classes import API, Reference, GenURLError
+from .combined_options import Options, CombinedOptions
 
 
 class Preprocessor(BasePreprocessor):
     defaults = {
-        'ref-regex': DEFAULT_REF_REGEX,
-        'require-prefix': False,
+        'reference': [],
+        'ref-regex': DEFAULT_REF_REGEX,  # ref
+        'only-api-prefixes': False,  # ref
+        'require-prefix': False,  # ref
         'ignoring-prefix': DEFAULT_IGNORING_PREFIX,
-        'output-template': '[{verb} {command}]({url})',
+        'output-template': '[{verb} {command}]({url})',  # ref
         'targets': [],
         'trim-if-targets': [],
-        'trim-template': '`{verb} {command}`',
+        'trim-template': '`{verb} {command}`',  # ref
         'API': {},
         'offline': False
-    }
+}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -237,7 +240,20 @@ class Preprocessor(BasePreprocessor):
             self.counter += 1
             return self.options['output-template'].format(url=url, **ref.__dict__)
 
-        return self.link_pattern.sub(_sub, content)
+        processed = content
+        main_options = Options(self.options, self.defaults)
+        if main_options['reference']:  # several references stated in config
+            for ref in main_options['reference']:
+                ref_options = Options(ref)
+                options = CombinedOptions({'main': main_options,
+                                           'ref': ref_options},
+                                          priority='ref')
+                processed = self.link_pattern.sub(_sub, processed)
+        else:  # only one reference stated
+            options = main_options
+            processed = self.link_pattern.sub(_sub, processed)
+
+        return processed
 
     def trim_prefixes(self, content: str) -> str:
         def _sub(block) -> str:

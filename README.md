@@ -147,14 +147,13 @@ preprocessors:
     ref-regex: *ref_pattern
     ignoring-prefix: Ignore
     require-prefix: false
-    output-template: '[{verb} {command}]({url})',
+    output-template: '[{verb} {command}]({url})'
     targets:
         - site
     offline: False
     trim-if-targets:
         - pdf
-    trim-template:
-        - '`{verb} {command}`'
+    trim-template: '`{verb} {command}`'
     API:
         Client-API:
             url: http://example.com/api/client
