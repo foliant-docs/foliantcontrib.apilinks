@@ -11,20 +11,22 @@ from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
                         REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
 
 from .classes import API, Reference, GenURLError
+from .combined_options import Options, CombinedOptions
 
 
 class Preprocessor(BasePreprocessor):
     defaults = {
-        'ref-regex': DEFAULT_REF_REGEX,
-        'require-prefix': False,
-        'ignoring-prefix': DEFAULT_IGNORING_PREFIX,
-        'output-template': '[{verb} {command}]({url})',
+        'reference': [],
+        'regex': DEFAULT_REF_REGEX,  # ref
+        'only_defined_prefixes': False,  # ref
+        'only_with_prefixes': False,  # ref
+        'prefix_to_ignore': DEFAULT_IGNORING_PREFIX,
+        'output_template': '[{verb} {command}]({url})',  # ref
         'targets': [],
-        'trim-if-targets': [],
-        'trim-template': '`{verb} {command}`',
+        'trim_if_targets': [],
+        'trim_template': '`{verb} {command}`',  # ref
         'API': {},
-        'offline': False
-    }
+        'offline': False}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -33,7 +35,6 @@ class Preprocessor(BasePreprocessor):
 
         self.logger.debug(f'Preprocessor inited: {self.__dict__}')
 
-        self.link_pattern = self._compile_link_pattern(self.options['ref-regex'])
         self.offline = bool(self.options['offline'])
         self.apis = OrderedDict()
         self.default_api = None
@@ -63,6 +64,12 @@ class Preprocessor(BasePreprocessor):
                           encoding='utf8') as markdown_file:
                     markdown_file.write(processed_content)
 
+    def is_prefix_defined(self, prefix):
+        '''Return True if prefix is defined in config under API or prefix-to-ignore'''
+        defined_prefixes = [*self.apis.keys(), self.options['prefix_to_ignore'].lower()]
+
+        return (prefix or '').lower() in defined_prefixes
+
     def set_apis(self):
         '''
         Fills self.apis dictionary with API objects representing each API from
@@ -79,11 +86,11 @@ class Preprocessor(BasePreprocessor):
                 api_dict = self.options['API'][api]
                 api_obj = API(api,
                               api_dict['url'],
-                              api_dict.get('header-template',
+                              api_dict.get('header_template',
                                            DEFAULT_HEADER_TEMPLATE),
                               self.offline,
-                              api_dict.get('endpoint-prefix', ''))
-                self.apis[api] = api_obj
+                              api_dict.get('endpoint_prefix', ''))
+                self.apis[api.lower()] = api_obj
                 if api_dict.get('default', False) and self.default_api is None:
                     self.default_api = api_obj
             except (error.HTTPError, error.URLError) as e:
@@ -134,7 +141,7 @@ class Preprocessor(BasePreprocessor):
         for api_name in self.apis:
             api = self.apis[api_name]
             if api.find_reference(ref):
-                found[api_name] = api
+                found[api.name] = api
         if len(found) == 1:
             return next(iter(found.values()))
         elif len(found) > 1:
@@ -153,15 +160,16 @@ class Preprocessor(BasePreprocessor):
         ref (Reference) — Reference object for which the API should be found.
         '''
 
-        if ref.prefix in self.apis:
-            api = self.apis[ref.prefix]
+        if self.is_prefix_defined(ref.prefix):
+            api = self.apis[ref.prefix.lower()]
             if api.find_reference(ref):
                 return api
             else:
-                raise GenURLError(f'Cannot find method {ref.verb} {ref.command} in {ref.prefix}.')
+                raise GenURLError(f'Cannot find method {ref.verb} {ref.command} in {api.name}.')
         else:
+            prefixes = [*self.options.get('API', {}).keys(), self.options['prefix_to_ignore']]
             raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
-                              f'{", ".join(self.apis.keys())}.')
+                              f'{", ".join(prefixes)}.')
 
     def assume_api(self, ref: Reference) -> API:
         '''
@@ -180,10 +188,11 @@ class Preprocessor(BasePreprocessor):
         '''
 
         if ref.prefix:
-            if ref.prefix not in self.apis:
+            if not self.is_prefix_defined(ref.prefix):
+                prefixes = [*self.options.get('API', {}).keys(), self.options['prefix_to_ignore']]
                 raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
-                                  f'{", ".join(self.apis.keys())}.')
-            return self.apis[ref.prefix]
+                                  f'{", ".join(prefixes)}.')
+            return self.apis[ref.prefix.lower()]
         else:
             if self.default_api is None:
                 raise GenURLError(f'Default API is not set.')
@@ -220,37 +229,78 @@ class Preprocessor(BasePreprocessor):
             ref = Reference()
             ref.init_from_match(block)
 
-            if self.options['require-prefix'] and not ref.prefix:
+            if options['only_with_prefixes'] and not ref.prefix:
                 return ref.source
 
-            if ref.prefix == self.options['ignoring-prefix']:
+            if options['only_defined_prefixes'] and not self.is_prefix_defined(ref.prefix):
+                return ref.source
+
+            if (ref.prefix or '').lower() == options['prefix_to_ignore'].lower():
                 return ref.source
 
             try:
-                api = self.assume_api(ref) if self.offline else self.determine_api(ref)
+                if self.offline:
+                    api = self.assume_api(ref)
+                else:
+                    api = self.determine_api(ref)
             except GenURLError as e:
                 self._warning(f'{e} Skipping.')
                 return ref.source
 
-            ref = ref.convert_to_api_reference(api.endpoint_prefix)
+            ref.endpoint_prefix = api.endpoint_prefix
             url = api.gen_full_url(ref.__dict__)
             self.counter += 1
-            return self.options['output-template'].format(url=url, **ref.__dict__)
+            return options['output_template'].format(url=url, **ref.__dict__)
 
-        return self.link_pattern.sub(_sub, content)
+        processed = content
+        main_options = Options(self.options, self.defaults)
+        if main_options['reference']:  # several references stated in config
+            for ref in main_options['reference']:
+                ref_options = Options(ref)
+                options = CombinedOptions({'main': main_options,
+                                           'ref': ref_options},
+                                          priority='ref')
+                pattern = self._compile_link_pattern(options['regex'])
+                processed = pattern.sub(_sub, processed)
+        else:  # only one reference stated
+            options = main_options
+            pattern = self._compile_link_pattern(options['regex'])
+            processed = pattern.sub(_sub, processed)
+
+        return processed
 
     def trim_prefixes(self, content: str) -> str:
         def _sub(block) -> str:
             '''
             Replaces each occurence of the reference to API method (described
             by regex in 'ref-regex' option) with its trimmed version.
+
+            Only those references are replaced which prefixes are defined in
+            config + prefix-to-ignore. All the others are left unchanged.
             '''
 
             ref = Reference()
             ref.init_from_match(block)
-            return self.options['trim-template'].format(**ref.__dict__)
+            if not self.is_prefix_defined(ref.prefix):
+                return ref.source
+            return options['trim_template'].format(**ref.__dict__)
 
-        return self.link_pattern.sub(_sub, content)
+        processed = content
+        main_options = Options(self.options, self.defaults)
+        if main_options['reference']:  # several references stated in config
+            for ref in main_options['reference']:
+                ref_options = Options(ref)
+                options = CombinedOptions({'main': main_options,
+                                           'ref': ref_options},
+                                          priority='ref')
+                pattern = self._compile_link_pattern(options['regex'])
+                processed = pattern.sub(_sub, processed)
+        else:  # only one reference stated
+            options = main_options
+            pattern = self._compile_link_pattern(options['regex'])
+            processed = pattern.sub(_sub, processed)
+
+        return processed
 
     def apply(self):
         self.logger.info('Applying preprocessor')
@@ -258,7 +308,7 @@ class Preprocessor(BasePreprocessor):
                 self.context['target'] in self.options['targets']:
             self._apply_for_all_files(self.process_links, 'Converting references')
 
-        if self.context['target'] in self.options['trim-if-targets']:
+        if self.context['target'] in self.options['trim_if_targets']:
             self._apply_for_all_files(self.trim_prefixes, 'Trimming prefixes')
 
         self.logger.info(f'Preprocessor applied. {self.counter} links were added')
