@@ -17,49 +17,48 @@ class Reference:
     the __dict__ method.
     '''
 
-    def __init__(self, source='', prefix='', verb='', command=''):
-        self.source = source or ''
-        self.prefix = prefix or ''
-        self.verb = verb or ''
-        self.command = ensure_root(command)
+    def __init__(self, **kwargs):
+        self.__dict__ = {'source': '',
+                         'prefix': '',
+                         'verb': '',
+                         'command': ''}
+        self.__dict__.update(kwargs)
 
     def init_from_match(self, match):
         '''init values for all reference attributes from a match object'''
+        self.__dict__.update(match.groupdict())
 
-        groups = match.groupdict().keys()
-        if 'source' in groups:
-            self.source = match.group('source')
-        if 'prefix' in groups:
-            self.prefix = match.group('prefix')
-        if 'verb' in groups:
-            self.verb = match.group('verb')
-        if 'command' in groups:
-            self.command = ensure_root(match.group('command'))
+    def __setattr__(self, name, value):
+        '''
+        If name of tha attr is command or endpoint_prefix — ensure that
+        endpoint_prefix has or doesn't have trailing slash needed to correctly
+        add endpoint_prefix with command.
+        '''
+        if name == 'command':
+            command = value
+            ep = self.__dict__.get('endpoint_prefix', '')
+        elif name == 'endpoint_prefix':
+            command = self.__dict__.get('command', '')
+            ep = value
+        else:
+            super().__setattr__(name, value)
+            return
 
-    def convert_to_api_reference(self, endpoint_prefix):
-        '''Profided an endpoint prefix converts Reference instance into an
-        APIReference instance'''
-
-        return APIReference(endpoint_prefix=endpoint_prefix, **self.__dict__)
-
-
-class APIReference(Reference):
-    '''
-    A Reference class for a certain API. Adds to attributes the endpoint_prefix
-    attribute.
-    '''
-
-    def __init__(self, endpoint_prefix='', **kwargs):
-        super().__init__(**kwargs)
-        self.endpoint_prefix = ensure_root(endpoint_prefix) or ''
-        if self.endpoint_prefix:
-            self._fix_command()
+        add_slash = command and not command.startswith('/')
+        self.__dict__['command'] = command
+        self.__dict__['endpoint_prefix'] = ep.rstrip('/') + add_slash * '/'
+        self._fix_command()
 
     def _fix_command(self):
-        '''Remove endpoint prefix from the beginning of command'''
+        '''If command contains endpoint prefix — strip it out'''
 
-        if self.command.startswith(self.endpoint_prefix):
-            self.command = self.command[len(self.endpoint_prefix):]
+        command = self.command.lstrip('/')
+        ep = self.endpoint_prefix.strip('/')
+        if not (command and ep):
+            return
+        if command.startswith(ep):
+            self.__dict__['command'] = command[len(ep):]
+            self.__dict__['endpoint_prefix'] = '/' + ep
 
 
 class API:
@@ -72,10 +71,7 @@ class API:
         self.offline = offline
         self.headers = self._fill_headers()
         self.header_template = htempl
-        self.endpoint_prefix = endpoint_prefix or ''
-        if self.endpoint_prefix:
-            # ensure that it starts with '/'
-            self.endpoint_prefix = '/' + self.endpoint_prefix.strip('/ ')
+        self.endpoint_prefix = ensure_root(endpoint_prefix) if endpoint_prefix else ''
 
     def _fill_headers(self) -> dict:
         '''
@@ -91,7 +87,7 @@ class API:
         page = request.urlopen(self.url).read()  # may throw HTTPError, URLError
         headers = {}
         for event, elem in etree.iterparse(BytesIO(page), html=True):
-            if elem.tag == 'h2':
+            if elem.tag in ('h1', 'h2', 'h3', 'h4'):
                 anchor = elem.attrib.get('id', None)
                 if anchor:
                     headers[anchor] = elem.text
@@ -133,7 +129,8 @@ class API:
         If not — False.
         '''
 
-        apiref = ref.convert_to_api_reference(self.endpoint_prefix)
+        apiref = ref
+        apiref.endpoint_prefix = self.endpoint_prefix
         anchor = self.format_anchor(apiref.__dict__)
         return anchor in self.headers
 

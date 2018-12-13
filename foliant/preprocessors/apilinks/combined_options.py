@@ -100,7 +100,7 @@ class CombinedOptions(Options):
     def priority(self, val: str):
         if val not in self._options_dict:
             raise ValueError('Priority must be one of: '
-                             f'{", ".join(self._options_dict.keys)}. '
+                             f'{", ".join(self._options_dict.keys())}. '
                              f'Value received: {val}')
         self._priority = val
         self.set_options()
