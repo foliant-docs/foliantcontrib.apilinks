@@ -1,3 +1,7 @@
+# 1.1.1
+
+-   Added filename to warnings.
+
 # 1.1.0
 
 -   Prefixes are now case insensitive.
