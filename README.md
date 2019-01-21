@@ -144,44 +144,32 @@ The preprocessor has a lot of options. For your convenience the required options
 ```yaml
 preprocessors:
 - apilinks:
-    ref-regex: *ref_pattern
-    ignoring-prefix: Ignore
-    require-prefix: false
-    output-template: '[{verb} {command}]({url})',
     targets:
         - site
     offline: False
-    trim-if-targets:
+    trim_if_targets:
         - pdf
-    trim-template:
-        - '`{verb} {command}`'
+    prefix_to_ignore: Ignore
+    reference:
+        - regex: *ref_pattern
+          only_with_prefixes: false
+          only_defined_prefixes: true
+          output_template: '[{verb} {command}]({url})'
+          trim_template: '`{verb} {command}`'
     API:
         Client-API:
             url: http://example.com/api/client
             default: true
-            header-template: '{verb} {command}'
+            header_template: '{verb} {command}'
         Admin-API:
             url: http://example.com/api/client
-            header-template: '{command}'
+            header_template: '{command}'
             endpoint-prefix: /api/v0
 ```
 
-`ref-regex`
-:   *(optional)* regular expression used to catch *references* in the source. Look for details in the **Capturing References** section.
-Default:
 
-```
-(?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH|LINK|UNLINK)\s+(?P<command>\S+)`)
-```
-
-`ignoring-prefix`
+`prefix_to_ignore`
 :   *(optional)* A default prefix for ignoring references. If apilinks meets a reference with this prefix it leaves it unchanged. Default: `Ignore`
-
-`require-prefix`
-:   *(optional)* if this is `true`, only *references* with prefix will be transformed. Ordinary links like `GET user/info` will be ignored. Default: `false`
-
-`output-template`
-:   *(optional)* A template string describing the *output* which will replace the *reference*. More info in the **Customizing Output** section. Default: `'[{verb} {command}]({url})'`
 
 `targets`
 :   *(optional)* List of supported targets for `foliant make` command. If target is not listed here — preprocessor won't be applied. If the list is empty — preprocessor will be applied for any target. Default: `[]`
@@ -189,14 +177,43 @@ Default:
 `offline`
 :   *(optional)* Option determining whether the preprocessor will work in *online* or *offline* mode. Details in the **How Does It Work?** and **Online and Offline Modes Comparison** sections. Default: `False`
 
-`trim-if-targets`
+`trim_if_targets`
 :   *(optional)* List of targets for `foliant make` command for which the prefixes from all *references* in the text will be cut out. Default: `[]`
 
-`trim-template`
-:   *(optional)* Only for targets listed in `trim-if-targets` option. Tune this template if you want to customize how apilinks cuts out prefixes. The reference will be replaced with text based on this template. Default: ```'`{verb} {command}`'```
+> Only those references whose prefixes are defined in the `API` section (described below) are affected by this option. All references with unlisted prefixes will not be trimmed.
+
+`reference`
+:   *(optional)* A subsection for listing all the types of references you are going to catch in the text, and their properties. Options for this section are listed below.
+
+***
+
+**Reference options**
+`regex`
+:   *(optional)* regular expression used to catch *references* in the source. Look for details in the **Capturing References** section.
+Default:
+
+```
+(?P<source>`((?P<prefix>[\w-]+):\s*)?(?P<verb>OPTIONS|GET|HEAD|POST|PUT|DELETE|TRACE|CONNECT|PATCH|LINK|UNLINK)\s+(?P<command>\S+)`)
+```
+
+`only_with_prefixes`
+:   *(optional)* if this is `true`, only *references* with prefix will be transformed. Ordinary links like `GET user/info` will be ignored. Default: `false`
+
+`only_defined_prefixes`
+:   *(optional)* if this is `true` all references whose prefix is not listed in the `API` section (described below) will be ignored, left unchanged. References without prefix are not affected by this option. Default: `false`.
+
+`output_template`
+:   *(optional)* A template string describing the *output* which will replace the *reference*. More info in the **Customizing Output** section. Default: `'[{verb} {command}]({url})'`
+
+`trim_template`
+:   *(optional)* Only for targets listed in `trim_if_targets` option. Tune this template if you want to customize how apilinks cuts out prefixes. The reference will be replaced with text based on this template. Default: ```'`{verb} {command}`'```
+
+***
 
 `API`
 :   *(required)* A subsection for listing all the APIs and their properties. Under this section there should be a separate subsection for each API. The section name represents the API name and, at the same time, the *prefix* used in the references. You need to add at least one API subsection for preprocessor to work.
+
+***
 
 **API properties**
 
@@ -206,7 +223,7 @@ Default:
 `default`
 :   *(optional)* Only for offline mode. Marker to define the default API. If several APIs are marked default, preprocessor will choose the first of them. If none is marked default — the first API in the list will be chosen. The value of this item should be `true`.
 
-`header-template`
+`header_template`
 :   *(optional)* A template string describing the format of the headings in the API documentation web-page. Details in **parsing API web-page** section. Default: `'{verb} {command}'`
 
 `endpoint-prefix`
@@ -227,10 +244,10 @@ preprocessors:
         Client-API:
             url: http://example.com/api/client
             default: true
-            header-template: '{verb} {command}'
+            header_template: '{verb} {command}'
         Remote-API:
             url: https://remote.net/api-ref/
-            header-template: '{command}'
+            header_template: '{command}'
 ```
 
 Now let's look at different examples of the text used in Markdown source and how it is going to be transformed in Offline and Online modes
@@ -301,7 +318,7 @@ In *Offline mode* preprocessor will notice the prefix and will be able to replac
 Prefixed link to the Admin API: [POST user/ban_forever](http://example.com/api/client/#post-user-ban_forever).
 ```
 
-Notice that prefix disappeared from the text. If you wish it to stay there — edit the `output-template` option to something like this: `'{prefix}: {verb} {command}'`.
+Notice that prefix disappeared from the text. If you wish it to stay there — edit the `output_template` option to something like this: `'{prefix}: {verb} {command}'`.
 
 In *Online mode* the result will be exactly the same. Preprocessor will check the Admin-API methods, find there the referenced method and replace it in the text:
 
@@ -391,10 +408,11 @@ For example, if you want to capture ONLY references with prefixes you may use th
 ```yaml
 preprocessors:
   - apilinks:
-      ref-regex: '(?P<source>`((?P<prefix>[\w-]+):\s*)(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)'
+      reference:
+      - regex: '(?P<source>`((?P<prefix>[\w-]+):\s*)(?P<verb>POST|GET|PUT|UPDATE|DELETE)\s+(?P<command>\S+)`)'
 ```
 
-> This example is for illustrative purposes only. You can achieve the same goal by just switching on the `require-prefix` option.
+> This example is for illustrative purposes only. You can achieve the same goal by just switching on the `only_with_prefixes` option.
 
 Now the references without prefix (`UPDATE user/details`) will be ignored.
 
@@ -409,7 +427,8 @@ For example, look at the default template:
 ```yaml
 preprocessors:
   - apilinks:
-      output-template: '[{verb} {command}]({url})',
+    reference:
+      - output_template: '[{verb} {command}]({url})',
 ```
 
 > Don't forget the single quotes around the template. This way we say to yaml engine that this is a string for it not to be confused with curly braces.
@@ -445,9 +464,9 @@ For example in this link:
 
 the anchor would be `get-user-info` and the heading would be `GET user/info`.
 
-To construct the link to the method description we will have to create the correct anchor for it. To create an anchor we would need to reconstruct the heading first. But the heading format may be arbitrary and that's why we need the `header-template` config option.
+To construct the link to the method description we will have to create the correct anchor for it. To create an anchor we would need to reconstruct the heading first. But the heading format may be arbitrary and that's why we need the `header_template` config option.
 
-The `header-template` is a string which may contain properties, surrounded by curly braces. These properties will be replaced with the values, when preprocessor will attempt to reconstruct the heading. All the rest will remain unchanged.
+The `header_template` is a string which may contain properties, surrounded by curly braces. These properties will be replaced with the values, when preprocessor will attempt to reconstruct the heading. All the rest will remain unchanged.
 
 For example, if your API headings look like this:
 
@@ -461,7 +480,7 @@ You should use the following option:
 ...
 API:
     Client-API:
-        header-template: 'Method {command} ({verb})'
+        header_template: 'Method {command} ({verb})'
 ...
 ```
 
@@ -479,7 +498,7 @@ You should use the following option:
 ...
 API:
     Client-API:
-        header-template: '{command}'
+        header_template: '{command}'
 ...
 ```
 
