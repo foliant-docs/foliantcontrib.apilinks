@@ -1,6 +1,7 @@
 '''apilinks preprocessor for Foliant. Replaces API references with links to API
 docs'''
 import re
+from pathlib import Path
 from collections import OrderedDict
 from urllib import error
 
@@ -39,19 +40,21 @@ class Preprocessor(BasePreprocessor):
         self.apis = OrderedDict()
         self.default_api = None
         self.set_apis()
+        self.current_filename = ''
 
         self.counter = 0
 
     def _warning(self, msg: str):
         '''Log warning and print to user'''
 
-        output(f'WARNING: {msg}', self.quiet)
+        output(f'WARNING: [{self.current_filename}] {msg}', self.quiet)
         self.logger.warning(msg)
 
     def _apply_for_all_files(self, func, log_msg: str):
         '''Apply function func to all Mardown-files in the working dir'''
         self.logger.info(log_msg)
         for markdown_file_path in self.working_dir.rglob('*.md'):
+            self.current_filename = Path(markdown_file_path).relative_to(self.working_dir)
             with open(markdown_file_path,
                       encoding='utf8') as markdown_file:
                 content = markdown_file.read()
@@ -63,6 +66,7 @@ class Preprocessor(BasePreprocessor):
                           'w',
                           encoding='utf8') as markdown_file:
                     markdown_file.write(processed_content)
+        self.current_filename = ''
 
     def is_prefix_defined(self, prefix):
         '''Return True if prefix is defined in config under API or prefix-to-ignore'''
