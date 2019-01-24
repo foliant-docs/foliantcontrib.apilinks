@@ -35,12 +35,12 @@ class Preprocessor(BasePreprocessor):
         self.logger = self.logger.getChild('apilinks')
 
         self.logger.debug(f'Preprocessor inited: {self.__dict__}')
+        self.current_filename = ''
 
         self.offline = bool(self.options['offline'])
         self.apis = OrderedDict()
         self.default_api = None
         self.set_apis()
-        self.current_filename = ''
 
         self.counter = 0
 
