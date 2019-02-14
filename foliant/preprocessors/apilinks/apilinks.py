@@ -12,7 +12,8 @@ from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
                         REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
 
 from .classes import API, Reference, GenURLError
-from .combined_options import Options, CombinedOptions
+from foliant.preprocessors.utils.combined_options import (Options,
+                                                          CombinedOptions)
 
 
 class Preprocessor(BasePreprocessor):
@@ -35,12 +36,12 @@ class Preprocessor(BasePreprocessor):
         self.logger = self.logger.getChild('apilinks')
 
         self.logger.debug(f'Preprocessor inited: {self.__dict__}')
+        self.current_filename = ''
 
         self.offline = bool(self.options['offline'])
         self.apis = OrderedDict()
         self.default_api = None
         self.set_apis()
-        self.current_filename = ''
 
         self.counter = 0
 
