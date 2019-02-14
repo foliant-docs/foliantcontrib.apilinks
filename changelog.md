@@ -1,3 +1,7 @@
+# 1.1.2
+
+- Moved combined_options into a submodule
+
 # 1.1.1
 
 -   Added filename to warnings.

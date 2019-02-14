@@ -12,7 +12,8 @@ from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
                         REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
 
 from .classes import API, Reference, GenURLError
-from .combined_options import Options, CombinedOptions
+from foliant.preprocessors.utils.combined_options import (Options,
+                                                          CombinedOptions)
 
 
 class Preprocessor(BasePreprocessor):
