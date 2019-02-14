@@ -25,7 +25,7 @@ setup(
     platforms='any',
     install_requires=[
         'foliant>=1.0.8',
-        'foliantcontrib.utils.combinedoptions',
+        'foliantcontrib.utils.combined_options',
         'lxml'
     ],
     classifiers=[
