@@ -1,3 +1,5 @@
+![](https://img.shields.io/pypi/v/foliantcontrib.apilinks.svg)
+
 # apilinks Preprocessor for Foliant
 
 Preprocessor for replacing API *reference*s in markdown files with links to actual method description on the API documentation web-page.
