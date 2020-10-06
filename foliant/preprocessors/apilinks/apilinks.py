@@ -11,7 +11,7 @@ from foliant.utils import output
 from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
                         REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
 
-from .classes import API, Reference, GenURLError
+from .classes import API, SwaggerAPI, Reference, GenURLError, WrongModeError
 from foliant.preprocessors.utils.combined_options import (Options,
                                                           CombinedOptions)
 
@@ -79,22 +79,45 @@ class Preprocessor(BasePreprocessor):
         '''
         Fills self.apis dictionary with API objects representing each API from
         the config. If self.offline == false — they will be filled with headers
-        from the actual wep-page.
+        from the actual web-page.
 
         Also sets self.default_api. It is the first API from the config marked
         with 'default' option or, if there's not mark, ther first API from the
-        config. self.default_api is API class.
+        config. self.default_api is API class instance.
         '''
 
         for api in self.options.get('API', {}):
             try:
                 api_dict = self.options['API'][api]
-                api_obj = API(api,
-                              api_dict['url'],
-                              api_dict.get('header_template',
-                                           DEFAULT_HEADER_TEMPLATE),
-                              self.offline,
-                              api_dict.get('endpoint_prefix', ''))
+                if api_dict.get('site_backend') == 'swagger' or \
+                        api_dict.get('site_backend') is None and api_dict.get('spec_url'):
+                    if not api_dict.get('spec_url'):
+                        self._warning(
+                            f'API {api} has "swagger" site backend but no "spec_url"'
+                            ' stated. Skipping')
+                        continue
+                    try:
+                        api_obj = SwaggerAPI(
+                            api,
+                            api_dict['url'],
+                            api_dict['spec_url'],
+                            self.offline,
+                            api_dict.get('endpoint_prefix', ''),
+                        )
+                    except WrongModeError:
+                        self._warning(
+                            f'Swagger UI APIs only works in online mode. Skipping {api}')
+                        continue
+                else:  # not a swagger site_backend
+                    api_obj = API(
+                        api,
+                        api_dict['url'],
+                        api_dict.get('header_template',
+                                     DEFAULT_HEADER_TEMPLATE),
+                        self.offline,
+                        api_dict.get('site_backend', 'slate'),
+                        api_dict.get('endpoint_prefix', '')
+                    )
                 self.apis[api.lower()] = api_obj
                 if api_dict.get('default', False) and self.default_api is None:
                     self.default_api = api_obj
@@ -233,6 +256,8 @@ class Preprocessor(BasePreprocessor):
 
             ref = Reference()
             ref.init_from_match(block)
+
+            self.logger.debug(f'Found ref: {block.group(0)}')
 
             if options['only_with_prefixes'] and not ref.prefix:
                 return ref.source

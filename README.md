@@ -14,19 +14,17 @@ $ pip install foliantcontrib.apilinks
 
 Say, you have an API documentation hosted at the url http://example.com/api-docs
 
-On this page you have HTML headings before each method description which look like this:
+It may be a [Swagger UI](https://swagger.io/tools/swagger-ui/) website or just some static one-page site (like [Slate](https://github.com/slatedocs/slate)).
 
-```html
-<h2 id="get-user-authenticate">GET user/authenticate</h2>
-```
-
-You want references to these methods in your documentation to be replaced with the links to the actual method descriptions. Your references look like this:
+So if you have a site with API docs, you probably reference to it from time in your other documents:
 
 ```
-To authenticate user use API method `GET user/authenticate`.
+To authenticate user use API method `GET /user/authenticate`.
 ```
 
-Now all you need to do is add the apilinks preprocessor into your foliant.yml and state your API url in its options like this:
+We thought, how cool it'd be if this fragment: **\`GET /user/authenticate\`** automatically transformed into link to this method description on your API docs website. That's what APILinks is for.
+
+Add it to your preprocessor list like this if your API docs is a Slate-like static website:
 
 ```yaml
 preprocessors:
@@ -36,11 +34,23 @@ preprocessors:
                 url: http://example.com/api-docs
 ```
 
+Or like this if your API docs is a Swagger UI website:
+
+```yaml
+preprocessors:
+    - apilinks:
+        API:
+            My-API:
+                url: http://example.com/api-docs
+                spec_url: http://example.com/api-docs/swagger.json
+```
+
 Here:
 
 - `API` is a required section;
 - `My-API` is a local name of your API. Right now it is not very important but will come in handy in the next example;
-- `url` is a string with full url to your API documentation web-page. It will be used to validate references and to construct a link to method.
+- `url` is a string with full url to your API documentation web-page. It will be used to validate references and to construct a link to method;
+- `spec_url` is a string with full url to OpenAPI specification file, which will be used to construct the proper anchor for the method.
 
 After foliant applies the preprocessor your document will be transformed into this:
 
@@ -62,6 +72,7 @@ preprocessors:
                 url: http://example.com/client/api-docs
             Admin-API:
                 url: http://example.com/admin/api-docs
+                spec_url: http://example.com/admin/api-docs/swagger.yml
 ```
 
 Now this source:
@@ -75,10 +86,10 @@ Will be transformed by apilinks into this:
 
 ```
 To authenticate user use API method [GET user/authenticate](http://example.com/client/api-docs/#get-user-authenticate).
-To ban user from the website use admin API method [POST admin/ban_user/{user_id}](http://example.com/admin/api-docs/#post-admin-ban_user-user_id)
+To ban user from the website use admin API method [POST admin/ban_user/{user_id}](http://example.com/admin/api-docs/#/user/banUser)
 ```
 
-Notice that apilinks determined that the first reference is from Client API, and the second one is from the Admin API. How is that possible? Easy: preprocessor parses each API url from the config and stores their methods before looking for references. When the time comes to process the references it already has a list of all methods to validate your reference and to determine which API link should be inserted.
+Notice that apilinks determined that the first reference is from Client API, and the second one is from the Admin API. How is that possible? Preprocessor parses each API url from the config and stores their methods before looking for references. When the time comes to process the references it already has a list of all methods to validate your reference and to determine which API link should be inserted.
 
 But what if we have the same-named method in both of our APIs? In this case you will see a warning:
 
@@ -128,7 +139,9 @@ You can have several different APIs stated in the config. You can use prefixes t
 
 If you don't use prefix in the *reference* preprocessor will suppose that you meant the default API, which is marked by `default` option in config. If none of them is marked — goes for the first in list.
 
-**In online mode** things are getting interesting. Preprocessor actually goes to each of the API web-pages, and collects all method **headers** (right now only `h2` headers are supported). Then it goes through your document's source: when it meets a *reference*, it looks through all the collected methods and replaces the reference with the correct link to it. If method is not found — preprocessor will show warning and leave the reference unchanged. Same will happen if there are several methods with this name in different APIs.
+> Note, that Swagger UI API websites won't work in offline mode at all, because we need to download the spec file (swagger.json) to figure out the proper anchor to a method description.
+
+**In online mode** things are getting interesting. Preprocessor actually goes to each of the API web-pages, and collects all method **headers**. Then it goes through your document's source: when it meets a *reference*, it looks through all the collected methods and replaces the reference with the correct link to it. If method is not found — preprocessor will show a warning and leave the reference unchanged. Same will happen if there are several methods with this name in different APIs.
 
 Prefixes, explained before, are supported too.
 
@@ -163,10 +176,16 @@ preprocessors:
             url: http://example.com/api/client
             default: true
             header_template: '{verb} {command}'
+            site_backend: slate
         Admin-API:
             url: http://example.com/api/client
             header_template: '{command}'
             endpoint-prefix: /api/v0
+            site_backend: aglio
+        Internal-API:
+            url: http://example.com/swagger-ui
+            spec_url: http://example.com/swagger-ui/swagger.json
+            site_backend: swagger
 ```
 
 
@@ -222,6 +241,9 @@ Default:
 `url`
 :   *(required)* An API documentation web-page URL. It will be used to construct the full link to the method. In online mode it will also be parsed by preprocessor for validation.
 
+`spec_url`
+:   *(optional)* Url to OpenAPI specification file. If this is parameter is present, APILinks assumes that your API documentation web-page is Swagger UI. It will download and parse the specification file and generate anchors for SwaggerUI, which are usually `#/<tag>/operationId`.
+
 `default`
 :   *(optional)* Only for offline mode. Marker to define the default API. If several APIs are marked default, preprocessor will choose the first of them. If none is marked default — the first API in the list will be chosen. The value of this item should be `true`.
 
@@ -230,6 +252,9 @@ Default:
 
 `endpoint-prefix`
 :   *(optional)* The endpoint prefix from the server root to API methods. If is stated — apilinks can divide the command in the reference and search for it more accurately. Also you could use it in templates. More info coming soon. Default: `''`
+
+`site_backend`
+:   *(optional)* Name of the static site generator, which built your API documentation website. This affects how headers are converted to anchors. Default: `slate`. Available options: `aglio`, `mkdocs`, `slate`, `swagger`.
 
 ## Online and Offline Modes Comparison
 

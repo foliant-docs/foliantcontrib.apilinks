@@ -16,7 +16,7 @@ setup(
     description=SHORT_DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    version='1.1.3',
+    version='1.2.0',
     author='Daniil Minukhin',
     author_email='ddddsa@gmail.com',
     url='https://github.com/foliant-docs/foliantcontrib.apilinks',
@@ -26,6 +26,7 @@ setup(
     install_requires=[
         'foliant>=1.0.8',
         'foliantcontrib.utils.combined_options',
+        'foliantcontrib.utils.header_anchors',
         'lxml'
     ],
     classifiers=[

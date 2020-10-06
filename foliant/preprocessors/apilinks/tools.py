@@ -1,5 +1,5 @@
 def ensure_root(route):
-    '''ensure that rote starts with forward slash. Trim trailing slah also.'''
+    '''ensure that route starts with forward slash. Also, trim trailing slash.'''
     if route:
         return '/' + route.strip('/ ')
     return route
@@ -15,8 +15,7 @@ def convert_to_anchor(reference: str) -> str:
 
     result = ''
     accum = False
-    header = reference
-    for char in header:
+    for char in reference:
         if char == '_' or char.isalpha():
             if accum:
                 accum = False
@@ -26,5 +25,3 @@ def convert_to_anchor(reference: str) -> str:
         else:
             accum = True
     return result.strip(' -')
-
-

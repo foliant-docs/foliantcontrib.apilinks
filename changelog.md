@@ -1,6 +1,11 @@
+# 1.2.0
+
+-   Added Swagger UI support,
+-   Anchors are now generated properly, with header_anchors tool. Added `site_backend` optional param to determine for which backend the anchors should be generated.
+
 # 1.1.3
 
-- Moved combined_options into a submodule
+-   Moved combined_options into a submodule
 
 # 1.1.1
 
