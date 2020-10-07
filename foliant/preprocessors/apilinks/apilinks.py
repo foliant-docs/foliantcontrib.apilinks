@@ -11,7 +11,8 @@ from foliant.utils import output
 from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
                         REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
 
-from .classes import API, SwaggerAPI, Reference, GenURLError, WrongModeError
+from .classes import (API, SwaggerAPI, RedocAPI, Reference, GenURLError,
+                      WrongModeError)
 from foliant.preprocessors.utils.combined_options import (Options,
                                                           CombinedOptions)
 
@@ -90,23 +91,42 @@ class Preprocessor(BasePreprocessor):
             try:
                 api_dict = self.options['API'][api]
                 if api_dict.get('site_backend') == 'swagger' or \
-                        api_dict.get('site_backend') is None and api_dict.get('spec_url'):
-                    if not api_dict.get('spec_url'):
+                        api_dict.get('site_backend') is None and api_dict.get('spec'):
+                    # by default is spec stated we assume it's a Swagger UI
+                    if not api_dict.get('spec'):
                         self._warning(
-                            f'API {api} has "swagger" site backend but no "spec_url"'
+                            f'API {api} has "swagger" site backend but no "spec"'
                             ' stated. Skipping')
                         continue
                     try:
                         api_obj = SwaggerAPI(
                             api,
                             api_dict['url'],
-                            api_dict['spec_url'],
+                            api_dict['spec'],
                             self.offline,
                             api_dict.get('endpoint_prefix', ''),
                         )
                     except WrongModeError:
                         self._warning(
-                            f'Swagger UI APIs only works in online mode. Skipping {api}')
+                            f'Swagger UI APIs only work in online mode. Skipping {api}')
+                        continue
+                elif api_dict.get('site_backend') == 'redoc':
+                    if not api_dict.get('spec'):
+                        self._warning(
+                            f'API {api} has "redoc" site backend but no "spec"'
+                            ' stated. Skipping')
+                        continue
+                    try:
+                        api_obj = RedocAPI(
+                            api,
+                            api_dict['url'],
+                            api_dict['spec'],
+                            self.offline,
+                            api_dict.get('endpoint_prefix', ''),
+                        )
+                    except WrongModeError:
+                        self._warning(
+                            f'Redoc APIs only work in online mode. Skipping {api}')
                         continue
                 else:  # not a swagger site_backend
                     api_obj = API(

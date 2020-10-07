@@ -1,3 +1,9 @@
+# 1.2.1
+
+-   Renamed `spec_url` to `spec` because it may also be a path to local file,
+-   Improved swagger.json parsing
+-   Added Redoc support (`redoc` site backend)
+
 # 1.2.0
 
 -   Added Swagger UI support,

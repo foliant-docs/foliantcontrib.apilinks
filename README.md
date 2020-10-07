@@ -16,7 +16,7 @@ Say, you have an API documentation hosted at the url http://example.com/api-docs
 
 It may be a [Swagger UI](https://swagger.io/tools/swagger-ui/) website or just some static one-page site (like [Slate](https://github.com/slatedocs/slate)).
 
-So if you have a site with API docs, you probably reference to it from time in your other documents:
+So if you have a site with API docs, you probably reference to them from time in your other documents:
 
 ```
 To authenticate user use API method `GET /user/authenticate`.
@@ -42,7 +42,7 @@ preprocessors:
         API:
             My-API:
                 url: http://example.com/api-docs
-                spec_url: http://example.com/api-docs/swagger.json
+                spec: http://example.com/api-docs/swagger.json
 ```
 
 Here:
@@ -50,7 +50,7 @@ Here:
 - `API` is a required section;
 - `My-API` is a local name of your API. Right now it is not very important but will come in handy in the next example;
 - `url` is a string with full url to your API documentation web-page. It will be used to validate references and to construct a link to method;
-- `spec_url` is a string with full url to OpenAPI specification file, which will be used to construct the proper anchor for the method.
+- `spec` is a string with full url to OpenAPI specification file, which will be used to construct the proper anchor for the method. It may also be a path to local specification file if you don't want to download it each time.
 
 After foliant applies the preprocessor your document will be transformed into this:
 
@@ -72,7 +72,7 @@ preprocessors:
                 url: http://example.com/client/api-docs
             Admin-API:
                 url: http://example.com/admin/api-docs
-                spec_url: http://example.com/admin/api-docs/swagger.yml
+                spec: http://example.com/admin/api-docs/swagger.yml
 ```
 
 Now this source:
@@ -184,7 +184,7 @@ preprocessors:
             site_backend: aglio
         Internal-API:
             url: http://example.com/swagger-ui
-            spec_url: http://example.com/swagger-ui/swagger.json
+            spec: http://example.com/swagger-ui/swagger.json
             site_backend: swagger
 ```
 
@@ -241,22 +241,26 @@ Default:
 `url`
 :   *(required)* An API documentation web-page URL. It will be used to construct the full link to the method. In online mode it will also be parsed by preprocessor for validation.
 
-`spec_url`
-:   *(optional)* Url to OpenAPI specification file. If this is parameter is present, APILinks assumes that your API documentation web-page is Swagger UI. It will download and parse the specification file and generate anchors for SwaggerUI, which are usually `#/<tag>/operationId`.
+`spec`
+:   *(required for `swagger` and `redoc` site backends)* URL or local path to OpenAPI specification file.
 
 `default`
 :   *(optional)* Only for offline mode. Marker to define the default API. If several APIs are marked default, preprocessor will choose the first of them. If none is marked default — the first API in the list will be chosen. The value of this item should be `true`.
 
 `header_template`
-:   *(optional)* A template string describing the format of the headings in the API documentation web-page. Details in **parsing API web-page** section. Default: `'{verb} {command}'`
+:   *(optional)* A template string describing the format of the headings in the API documentation web-page. It is needed to parse method headings from the web-page. Details in **parsing API web-page** section. Default: `'{verb} {command}'`
 
 `endpoint-prefix`
 :   *(optional)* The endpoint prefix from the server root to API methods. If is stated — apilinks can divide the command in the reference and search for it more accurately. Also you could use it in templates. More info coming soon. Default: `''`
 
 `site_backend`
-:   *(optional)* Name of the static site generator, which built your API documentation website. This affects how headers are converted to anchors. Default: `slate`. Available options: `aglio`, `mkdocs`, `slate`, `swagger`.
+:   *(optional)* Name of the static site generator, which built your API documentation website. This affects how headers are converted to anchors. Default: `slate`. Available options: `aglio`, `mkdocs`, `redoc`, `slate`, `swagger`.
+
+> If your API documentation website is built by another static site generator, there's still a chance that you will make it work with APILinks, because many of them use similar patterns to generate anchors. Just try one of  `aglio`, `mkdocs`, `slate` (but not `redoc` and `swagger`, these are special). If it doesn't work, send us a message, we will add support for your tool.
 
 ## Online and Offline Modes Comparison
+
+> Note, that Swagger and Redoc sites won't work in offline mode
 
 Let's study an example and look how the behavior of the preprocessor will change in online and offline modes.
 
@@ -406,7 +410,7 @@ WARNING: GET /service/healthcheck is present in several APIs (Admin-API, Client-
 
 ## Capturing References
 
-apilinks uses regular expressions to capture *references* to API methods in Markdown files.
+APILinks uses regular expressions to capture *references* to API methods in Markdown files.
 
 The default reg-ex is as following:
 
@@ -479,9 +483,11 @@ endpoint_prefix | Endpoint prefix to the API (if `endpoint-prefix` option is fil
 
 ## Parsing API Web-page
 
-apilinks goes through the API web-page content and gathers all the methods which are described there.
+**`aglio`, `mkdocs`, `slate` site backends**
 
-To do this preprocessor scans each HTML `h2` tag and stores its `id` attribute (which is an *anchor* of the link to be constructed) and the contents of the tag (the *heading* itself).
+In online mode APILinks goes through the API web-page content and gathers all the methods which are described there.
+
+To do this preprocessor scans each HTML `h1`, `h2`, `h3`, `h4` tag and stores its `id` attribute (which is an *anchor* of the link to be constructed) and the contents of the tag (the *heading* itself).
 
 For example in this link:
 
@@ -536,3 +542,19 @@ property | description | example
 verb | HTTP verb used in the reference | `GET`
 command | API command being referenced | `user/info`
 endpoint_prefix | Endpoint prefix to the API (if `endpoint-prefix` option is filled in) | `/api/v0`
+
+**`swagger` and `redoc` site backends**
+
+For Swagger and Redoc it's a bit different. To figure our the proper anchor to the method's description we need to know `operation_id` of the method. To get that we need the spec file (`swagger.json`) which was used to generate the website.
+
+That's why for Swagger and Redoc sites APILinks parses not the website itself, but the specification file. Right now you can't customize the anchor format, it will be like this for Swagger:
+
+```
+#\{tag}\{operationId}
+```
+
+and like this for Redoc:
+
+```
+operation\{operationId}
+```

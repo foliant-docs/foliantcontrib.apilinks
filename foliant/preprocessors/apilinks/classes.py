@@ -4,12 +4,13 @@ import yaml
 import ssl
 
 from io import BytesIO
+from pathlib import PosixPath
 from lxml import etree
 from urllib.request import urlopen
 
 from foliant.preprocessors.utils.header_anchors import to_id
 from .tools import ensure_root
-
+from .constants import HTTP_VERBS
 
 class Reference:
     '''
@@ -150,6 +151,8 @@ class API:
 
 
 class SwaggerAPI(API):
+    ANCHOR_TEMPLATE = '/{tag}/{operation_id}'
+    HEADER_TEMPLATE = '{verb} {path}'
 
     def __init__(self, name: str, url: str, spec_url: str,
                  offline: bool, endpoint_prefix: str = ''):
@@ -159,10 +162,12 @@ class SwaggerAPI(API):
         self.name = name
         self.url = url.rstrip('/')
 
-        if spec_url.startswith('http'):
+        if not isinstance(spec_url, (str, PosixPath)):
+            raise TypeError('spec_url must be str or PosixPath!')
+        elif isinstance(spec_url, str) and spec_url.startswith('http'):
             context = ssl._create_unverified_context()
             spec = urlopen(spec_url, context=context).read()  # may throw HTTPError, URLError
-        else:
+        else:  # supplied path, not a link
             with open(spec_url, encoding='utf8') as f:
                 spec = f.read()
         self.spec = yaml.load(spec, yaml.Loader)
@@ -184,16 +189,28 @@ class SwaggerAPI(API):
         self.anchors = {}
         for path_, path_info in self.spec['paths'].items():
             for verb, method_info in path_info.items():
+                if verb.upper() not in HTTP_VERBS:
+                    # print('skipping', verb)
+                    continue
                 tag = method_info['tags'][0]
+                summary = method_info.get('summary', '')
                 operation_id = method_info['operationId']
-                anchor = f'/{tag}/{operation_id}'
-                header = f'{verb.upper()} {path_}'
+                anchor = self.ANCHOR_TEMPLATE.format(tag=tag,
+                                                     operation_id=operation_id)
+                header = self.HEADER_TEMPLATE.format(verb=verb.upper(),
+                                                     path=path_,
+                                                     summary=summary)
                 self.headers[anchor] = header
                 self.anchors[header] = anchor
 
     def format_anchor(self, format_dict):
         '''/store/placeOrder'''
         return self.anchors.get(f'{format_dict["verb"].upper()} {format_dict["command"]}')
+
+
+class RedocAPI(SwaggerAPI):
+    ANCHOR_TEMPLATE = 'operation/{operation_id}'
+    # HEADER_TEMPLATE = '{summary}'
 
 
 class GenURLError(Exception):
