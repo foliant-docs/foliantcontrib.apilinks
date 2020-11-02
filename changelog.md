@@ -1,3 +1,8 @@
+# 1.2.2
+
+-   Fix: Endnpoint prefix was ignored in swagger and redoc site backends.
+-   Better logging.
+
 # 1.2.1
 
 -   Renamed `spec_url` to `spec` because it may also be a path to local file,

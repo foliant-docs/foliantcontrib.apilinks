@@ -5,12 +5,16 @@ import ssl
 
 from io import BytesIO
 from pathlib import PosixPath
+from logging import getLogger
 from lxml import etree
 from urllib.request import urlopen
 
 from foliant.preprocessors.utils.header_anchors import to_id
 from .tools import ensure_root
 from .constants import HTTP_VERBS
+
+logger = getLogger('flt.APILinks.classes')
+
 
 class Reference:
     '''
@@ -26,7 +30,8 @@ class Reference:
         self.__dict__ = {'source': '',
                          'prefix': '',
                          'verb': '',
-                         'command': ''}
+                         'command': '',
+                         'endpoint_prefix': ''}
         self.__dict__.update(kwargs)
 
     def init_from_match(self, match):
@@ -64,7 +69,10 @@ class Reference:
         if command.startswith(ep):
             self.__dict__['command'] = command[len(ep):]
             self.__dict__['endpoint_prefix'] = '/' + ep
-
+        logger.debug(
+            'Parsed reference:\n' +
+            '\n'.join(f'{k}: {v}' for k, v in self.__dict__.items())
+        )
 
 class API:
     '''Helper class representing an API documentation website'''
@@ -113,6 +121,10 @@ class API:
         format_dict (dict) — dictionary with values needed to generate a header
                              like 'verb' or 'command'
         '''
+        logger.debug(
+            'Formatting header from:\n' +
+            '\n'.join(f'{k}: {v}' for k, v in format_dict.items())
+        )
         return self.header_template.format(**format_dict)
 
     def format_anchor(self, format_dict):
@@ -144,7 +156,19 @@ class API:
         apiref = ref
         apiref.endpoint_prefix = self.endpoint_prefix
         anchor = self.format_anchor(apiref.__dict__)
-        return anchor in self.headers
+        logger.debug(f'Looking for reference in {self.name} by anchor: "{anchor}"')
+        result = anchor in self.headers
+        if result:
+            logger.debug(f'Reference found in {self.name}')
+            return result
+        else:
+            apiref.endpoint_prefix = ''
+            anchor = self.format_anchor(apiref.__dict__)
+            logger.debug(f'Looking for reference in {self.name} by anchor: "{anchor}"')
+            result = anchor in self.headers
+            if result:
+                logger.debug(f'Reference found in {self.name}')
+            return result
 
     def __str__(self):
         return f'<API: {self.name}>'
@@ -158,6 +182,8 @@ class SwaggerAPI(API):
                  offline: bool, endpoint_prefix: str = ''):
         if offline:
             raise WrongModeError('Refs to Swagger UI only work in online mode now')
+
+        self.header_template = self.HEADER_TEMPLATE
 
         self.name = name
         self.url = url.rstrip('/')
@@ -193,19 +219,22 @@ class SwaggerAPI(API):
                     # print('skipping', verb)
                     continue
                 tag = method_info['tags'][0]
-                summary = method_info.get('summary', '')
+                # summary = method_info.get('summary', '')
                 operation_id = method_info['operationId']
                 anchor = self.ANCHOR_TEMPLATE.format(tag=tag,
                                                      operation_id=operation_id)
                 header = self.HEADER_TEMPLATE.format(verb=verb.upper(),
-                                                     path=path_,
-                                                     summary=summary)
+                                                     path=path_)
                 self.headers[anchor] = header
                 self.anchors[header] = anchor
 
     def format_anchor(self, format_dict):
         '''/store/placeOrder'''
-        return self.anchors.get(f'{format_dict["verb"].upper()} {format_dict["command"]}')
+        full_command = format_dict['endpoint_prefix'].rstrip('/') + '/' + format_dict['command'].lstrip('/')
+        header = self.HEADER_TEMPLATE.format(verb=format_dict['verb'], path=full_command)
+        logger.debug(f'Scanning headers in {self.name} for {header}')
+        result = self.anchors.get(header)
+        return result
 
 
 class RedocAPI(SwaggerAPI):
