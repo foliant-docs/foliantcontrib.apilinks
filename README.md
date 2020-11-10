@@ -124,7 +124,7 @@ Glossary:
 - **reference** — reference to an API method in the source file. The one to be replaced with the link, e.g. `GET user/config`
 - **verb** — HTTP method, e.g. `GET`, `POST`, etc.
 - **command** — resource used to represent method on the API documentation webpage, e.g. `/service/healthcheck`.
-- **endpoint prefix** — A prefix from server root to the command. If the command is `/user/status` and full resource is `/api/v0/user/satus` then the endpoint-prefix should be stated `/api/v0`. In references you can use either full resource (`{endpoint_prefix}/{command}`) or just the command. apilinks will sort it out for you.
+- **endpoint prefix** — A prefix from server root to the command. If the command is `/user/status` and full resource is `/api/v0/user/satus` then the endpoint prefix should be stated `/api/v0`. In references you can use either full resource (`{endpoint_prefix}/{command}`) or just the command. apilinks will sort it out for you.
 - **output** — string, which will replace the *reference*.
 - **header** — HTML header on the API documentation web-page of the method description, e.g. `<h2 id="get-user-config">GET user/config</h2>`
 - **anchor** — web-anchor leading to the specific *header* on the API documentation web-page, e.g. `#get-user-config`
@@ -180,7 +180,7 @@ preprocessors:
         Admin-API:
             url: http://example.com/api/client
             header_template: '{command}'
-            endpoint-prefix: /api/v0
+            endpoint_prefix: /api/v0
             site_backend: aglio
         Internal-API:
             url: http://example.com/swagger-ui
@@ -250,7 +250,7 @@ Default:
 `header_template`
 :   *(optional)* A template string describing the format of the headings in the API documentation web-page. It is needed to parse method headings from the web-page. Details in **parsing API web-page** section. Default: `'{verb} {command}'`
 
-`endpoint-prefix`
+`endpoint_prefix`
 :   *(optional)* The endpoint prefix from the server root to API methods. If is stated — apilinks can divide the command in the reference and search for it more accurately. Also you could use it in templates. More info coming soon. Default: `''`
 
 `site_backend`
@@ -479,7 +479,7 @@ source | Full original reference string | \``Client-API: GET user/info`\`
 prefix | Prefix used in the reference | `Client-API`
 verb | HTTP verb used in the reference | `GET`
 command | API command being referenced with endpoint prefix removed | `user/info`
-endpoint_prefix | Endpoint prefix to the API (if `endpoint-prefix` option is filled in) | `/api/v0`
+endpoint_prefix | Endpoint prefix to the API (if `endpoint_prefix` option is filled in) | `/api/v0`
 
 ## Parsing API Web-page
 
@@ -541,7 +541,7 @@ property | description | example
 -------- | ----------- | -------
 verb | HTTP verb used in the reference | `GET`
 command | API command being referenced | `user/info`
-endpoint_prefix | Endpoint prefix to the API (if `endpoint-prefix` option is filled in) | `/api/v0`
+endpoint_prefix | Endpoint prefix to the API (if `endpoint_prefix` option is filled in) | `/api/v0`
 
 **`swagger` and `redoc` site backends**
 
