@@ -1,4 +1,4 @@
-![](https://img.shields.io/pypi/v/foliantcontrib.apilinks.svg)
+[![](https://img.shields.io/pypi/v/foliantcontrib.apilinks.svg)](https://pypi.org/project/foliantcontrib.apilinks/)  [![](https://img.shields.io/github/v/tag/foliant-docs/foliantcontrib.apilinks.svg?label=GitHub)](https://github.com/foliant-docs/foliantcontrib.apilinks)
 
 # apilinks Preprocessor for Foliant
 

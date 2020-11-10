@@ -230,6 +230,10 @@ class SwaggerAPI(API):
 
     def format_anchor(self, format_dict):
         '''/store/placeOrder'''
+        logger.debug(
+            'Formatting header from:\n' +
+            '\n'.join(f'{k}: {v}' for k, v in format_dict.items())
+        )
         full_command = format_dict['endpoint_prefix'].rstrip('/') + '/' + format_dict['command'].lstrip('/')
         header = self.HEADER_TEMPLATE.format(verb=format_dict['verb'], path=full_command)
         logger.debug(f'Scanning headers in {self.name} for {header}')
