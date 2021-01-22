@@ -105,6 +105,8 @@ class Preprocessor(BasePreprocessor):
                             api_dict['spec'],
                             self.offline,
                             api_dict.get('endpoint_prefix', ''),
+                            api_dict.get('login'),
+                            api_dict.get('password'),
                         )
                     except WrongModeError:
                         self._warning(
@@ -123,6 +125,8 @@ class Preprocessor(BasePreprocessor):
                             api_dict['spec'],
                             self.offline,
                             api_dict.get('endpoint_prefix', ''),
+                            api_dict.get('login'),
+                            api_dict.get('password'),
                         )
                     except WrongModeError:
                         self._warning(
@@ -136,7 +140,9 @@ class Preprocessor(BasePreprocessor):
                                      DEFAULT_HEADER_TEMPLATE),
                         self.offline,
                         api_dict.get('site_backend', 'slate'),
-                        api_dict.get('endpoint_prefix', '')
+                        api_dict.get('endpoint_prefix', ''),
+                        api_dict.get('login'),
+                        api_dict.get('password'),
                     )
                 self.apis[api.lower()] = api_obj
                 if api_dict.get('default', False) and self.default_api is None:

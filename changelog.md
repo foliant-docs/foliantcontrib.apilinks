@@ -1,3 +1,7 @@
+# 1.2.3
+
+-   Added options `login` and `password` for basic authentication on API sites.
+
 # 1.2.2
 
 -   Fix: Endnpoint prefix was ignored in swagger and redoc site backends.

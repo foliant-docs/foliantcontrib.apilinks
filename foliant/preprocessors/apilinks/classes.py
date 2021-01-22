@@ -10,7 +10,7 @@ from lxml import etree
 from urllib.request import urlopen
 
 from foliant.preprocessors.utils.header_anchors import to_id
-from .tools import ensure_root
+from .tools import ensure_root, urlopen_with_auth
 from .constants import HTTP_VERBS
 
 logger = getLogger('flt.APILinks.classes')
@@ -74,6 +74,7 @@ class Reference:
             '\n'.join(f'{k}: {v}' for k, v in self.__dict__.items())
         )
 
+
 class API:
     '''Helper class representing an API documentation website'''
 
@@ -83,10 +84,14 @@ class API:
                  htempl: str,
                  offline: bool,
                  site_backend: str,
-                 endpoint_prefix: str = ''):
+                 endpoint_prefix: str = '',
+                 login: str or None = None,
+                 password: str or None = None):
         self.name = name
         self.url = url.rstrip('/')
         self.offline = offline
+        self.login = login
+        self.password = password
         self.headers = self._fill_headers()
         self.header_template = htempl
         self.site_backend = site_backend
@@ -104,7 +109,10 @@ class API:
         if self.offline:
             return {}
         context = ssl._create_unverified_context()
-        page = urlopen(self.url, context=context).read()  # may throw HTTPError, URLError
+        if self.login and self.password:
+            page = urlopen_with_auth(self.url, self.login, self.password, context)
+        else:
+            page = urlopen(self.url, context=context).read()  # may throw HTTPError, URLError
         headers = {}
         for event, elem in etree.iterparse(BytesIO(page), html=True):
             if elem.tag in ('h1', 'h2', 'h3', 'h4'):
@@ -178,8 +186,16 @@ class SwaggerAPI(API):
     ANCHOR_TEMPLATE = '/{tag}/{operation_id}'
     HEADER_TEMPLATE = '{verb} {path}'
 
-    def __init__(self, name: str, url: str, spec_url: str,
-                 offline: bool, endpoint_prefix: str = ''):
+    def __init__(
+        self,
+        name: str,
+        url: str,
+        spec_url: str,
+        offline: bool,
+        endpoint_prefix: str = '',
+        login: str or None = None,
+        password: str or None = None,
+    ):
         if offline:
             raise WrongModeError('Refs to Swagger UI only work in online mode now')
 
@@ -188,11 +204,17 @@ class SwaggerAPI(API):
         self.name = name
         self.url = url.rstrip('/')
 
+        self.login = login
+        self.password = password
+
         if not isinstance(spec_url, (str, PosixPath)):
             raise TypeError('spec_url must be str or PosixPath!')
         elif isinstance(spec_url, str) and spec_url.startswith('http'):
             context = ssl._create_unverified_context()
-            spec = urlopen(spec_url, context=context).read()  # may throw HTTPError, URLError
+            if self.login and self.password:
+                spec = urlopen_with_auth(spec_url, self.login, self.password, context)
+            else:
+                spec = urlopen(spec_url, context=context).read()  # may throw HTTPError, URLError
         else:  # supplied path, not a link
             with open(spec_url, encoding='utf8') as f:
                 spec = f.read()

@@ -1,3 +1,8 @@
+import base64
+
+from urllib.request import Request, urlopen
+
+
 def ensure_root(route):
     '''ensure that route starts with forward slash. Also, trim trailing slash.'''
     if route:
@@ -25,3 +30,11 @@ def convert_to_anchor(reference: str) -> str:
         else:
             accum = True
     return result.strip(' -')
+
+
+def urlopen_with_auth(dest: str, login: str, password: str, context=None):
+    request = Request(dest)
+    b64_creds = base64.b64encode(bytes(f'{login}:{password}', 'ascii')).decode('utf-8')
+    request.add_header('Authorization', f'Basic {b64_creds}')
+    result = urlopen(request, context=context)
+    return result.read()

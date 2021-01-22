@@ -177,6 +177,8 @@ preprocessors:
             default: true
             header_template: '{verb} {command}'
             site_backend: slate
+            login: mylogin
+            password: mypass
         Admin-API:
             url: http://example.com/api/client
             header_template: '{command}'
@@ -255,6 +257,12 @@ Default:
 
 `site_backend`
 :   *(optional)* Name of the static site generator, which built your API documentation website. This affects how headers are converted to anchors. Default: `slate`. Available options: `aglio`, `mkdocs`, `redoc`, `slate`, `swagger`.
+
+`login`
+:    *(optional)* Login for basic authentication if present on your API site.
+
+`password`
+:    *(optional)* Password for basic authentication if present on your API site.
 
 > If your API documentation website is built by another static site generator, there's still a chance that you will make it work with APILinks, because many of them use similar patterns to generate anchors. Just try one of  `aglio`, `mkdocs`, `slate` (but not `redoc` and `swagger`, these are special). If it doesn't work, send us a message, we will add support for your tool.
 
