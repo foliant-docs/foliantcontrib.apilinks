@@ -88,7 +88,7 @@ class API:
                  login: str or None = None,
                  password: str or None = None):
         self.name = name
-        self.url = url.rstrip('/')
+        self.url = url
         self.offline = offline
         self.login = login
         self.password = password
@@ -202,7 +202,7 @@ class SwaggerAPI(API):
         self.header_template = self.HEADER_TEMPLATE
 
         self.name = name
-        self.url = url.rstrip('/')
+        self.url = url
 
         self.login = login
         self.password = password

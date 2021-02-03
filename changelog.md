@@ -1,3 +1,8 @@
+# 1.2.4
+
+-   Better warning when there's error in API configuration
+-   Trailing slash is not enforced in generated urls. Previously didn't work with *.html sites
+
 # 1.2.3
 
 -   Added options `login` and `password` for basic authentication on API sites.
