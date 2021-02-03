@@ -153,7 +153,7 @@ class API:
         format_dict (dict) — dictionary with values needed to generate an URL
                              like 'verb' or 'command'
         '''
-        return f'{self.url}/#{self.format_anchor(format_dict)}'
+        return f'{self.url}#{self.format_anchor(format_dict)}'
 
     def find_reference(self, ref: Reference) -> bool:
         '''

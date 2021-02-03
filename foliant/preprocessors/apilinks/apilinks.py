@@ -221,9 +221,13 @@ class Preprocessor(BasePreprocessor):
             else:
                 raise GenURLError(f'Cannot find method {ref.verb} {ref.command} in {api.name}.')
         else:
-            prefixes = [*self.options.get('API', {}).keys(), self.options['prefix_to_ignore']]
-            raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
-                              f'{", ".join(prefixes)}.')
+            config_prefixes = [*self.options.get('API', {}).keys(), self.options['prefix_to_ignore']]
+            set_up_prefixes = [*self.apis.keys(), self.options['prefix_to_ignore'].lower()]
+            if ref.prefix in config_prefixes:
+                raise GenURLError(f'API for prefix "{ref.prefix}" is not properly configured')
+            else:
+                raise GenURLError(f'"{ref.prefix}" is a wrong prefix. Should be one of: '
+                                  f'{", ".join(set_up_prefixes)}.')
 
     def assume_api(self, ref: Reference) -> API:
         '''
