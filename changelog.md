@@ -1,3 +1,7 @@
+# 1.2.5
+
+-   APILinks is now deprecated. Use APIReferences instead.
+
 # 1.2.4
 
 -   Better warning when there's error in API configuration

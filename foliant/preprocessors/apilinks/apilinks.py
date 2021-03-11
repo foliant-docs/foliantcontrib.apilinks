@@ -33,6 +33,11 @@ class Preprocessor(BasePreprocessor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        output(
+            "WARNING: APILinks preprocessor is now deprecated. It won't be "
+            "updated and may be removed in future. Please use APIReferences instead.",
+            self.quiet
+        )
 
         self.logger = self.logger.getChild('apilinks')
 
