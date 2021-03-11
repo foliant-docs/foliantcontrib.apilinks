@@ -1,6 +1,8 @@
 [![](https://img.shields.io/pypi/v/foliantcontrib.apilinks.svg)](https://pypi.org/project/foliantcontrib.apilinks/)  [![](https://img.shields.io/github/v/tag/foliant-docs/foliantcontrib.apilinks.svg?label=GitHub)](https://github.com/foliant-docs/foliantcontrib.apilinks)
 
-# apilinks Preprocessor for Foliant
+# APILinks Preprocessor for Foliant
+
+> APILinks preprocessor is now deprecated. It won't be updated and may be removed in future. Please use APIReferences instead.
 
 Preprocessor for replacing API *reference*s in markdown files with links to actual method description on the API documentation web-page.
 
