@@ -1,3 +1,7 @@
+# 1.2.6
+
+-   New utils module
+
 # 1.2.5
 
 -   APILinks is now deprecated. Use APIReferences instead.

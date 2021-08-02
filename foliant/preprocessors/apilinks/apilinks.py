@@ -1,20 +1,27 @@
 '''apilinks preprocessor for Foliant. Replaces API references with links to API
 docs'''
 import re
-from pathlib import Path
+
 from collections import OrderedDict
+from pathlib import Path
 from urllib import error
 
 from foliant.preprocessors.base import BasePreprocessor
 from foliant.utils import output
 
-from .constants import (DEFAULT_REF_REGEX, DEFAULT_HEADER_TEMPLATE,
-                        REQUIRED_REF_REGEX_GROUPS, DEFAULT_IGNORING_PREFIX)
+from .constants import DEFAULT_HEADER_TEMPLATE
+from .constants import DEFAULT_IGNORING_PREFIX
+from .constants import DEFAULT_REF_REGEX
+from .constants import REQUIRED_REF_REGEX_GROUPS
 
-from .classes import (API, SwaggerAPI, RedocAPI, Reference, GenURLError,
-                      WrongModeError)
-from foliant.preprocessors.utils.combined_options import (Options,
-                                                          CombinedOptions)
+from .classes import API
+from .classes import GenURLError
+from .classes import RedocAPI
+from .classes import Reference
+from .classes import SwaggerAPI
+from .classes import WrongModeError
+from foliant.contrib.combined_options import CombinedOptions
+from foliant.contrib.combined_options import Options
 
 
 class Preprocessor(BasePreprocessor):
